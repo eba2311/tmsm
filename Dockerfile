@@ -1,5 +1,5 @@
 # Multi-stage build for production
-FROM node:18-alpine AS client-builder
+FROM node:20-alpine AS client-builder
 
 WORKDIR /app/client
 COPY client/package*.json ./
@@ -8,7 +8,7 @@ COPY client/ ./
 RUN npm run build
 
 # Backend build
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/server
 COPY server/package*.json ./
@@ -16,7 +16,7 @@ RUN npm ci --only=production
 COPY server/ ./
 
 # Production image
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
