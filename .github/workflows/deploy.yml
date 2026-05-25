@@ -1,0 +1,34 @@
+name: Deploy Semen Connect TMSM
+
+on:
+  push:
+    branches:
+      - main
+      - production
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm run install-all
+
+      - name: Build Frontend Client
+        run: npm run build
+        
+      - name: Build Docker Image
+        run: docker build -t semenconnect/tmsm:latest .
+
+      # Note: Add deployment commands here (e.g., push to AWS ECR, deploy to DigitalOcean, etc.)
+      - name: Ready for Deployment
+        run: echo "Codebase built successfully and is ready to be deployed to the production server!"

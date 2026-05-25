@@ -1,0 +1,19 @@
+{
+  "name": "semen-connect",
+  "version": "1.0.0",
+  "description": "Transport Management System for Arba Minch hub",
+  "main": "server/src/server.js",
+  "scripts": {
+    "start": "npm start --prefix server",
+    "dev": "concurrently \"set PORT=4001&& npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install-all": "npm install --prefix server && npm install --prefix client",
+    "build": "npm install --prefix client && npm run build --prefix client",
+    "prod": "npm run build && npm start"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
