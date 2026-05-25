@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const supabase = require('../config/supabase');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -11,8 +11,13 @@ const authenticate = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.sub).select('-password -refreshToken');
-    if (!user || !user.isActive) {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email, phone, role, is_active, is_mfa_enabled, avatar, locale, last_login')
+      .eq('id', decoded.sub)
+      .single();
+
+    if (error || !user || !user.is_active) {
       return res.status(401).json({ success: false, message: 'User not found or deactivated' });
     }
 
