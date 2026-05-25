@@ -1,0 +1,13 @@
+node_modules
+client/node_modules
+server/node_modules
+npm-debug.log
+.env
+client/.env
+server/.env
+.git
+.cursor
+dist
+client/dist
+build
+.DS_Store
