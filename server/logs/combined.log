@@ -4091,3 +4091,11 @@
 {"level":"info","message":"::1 - - [22/May/2026:20:25:03 +0000] \"GET /favicon.ico HTTP/1.1\" 200 - \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\"","service":"semenconnect-api","timestamp":"2026-05-22 23:25:03"}
 {"level":"info","message":"::1 - - [22/May/2026:20:31:32 +0000] \"GET /api/v1/health HTTP/1.1\" 200 105 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\"","service":"semenconnect-api","timestamp":"2026-05-22 23:31:32"}
 {"level":"info","message":"::1 - - [22/May/2026:20:32:10 +0000] \"GET /favicon.ico HTTP/1.1\" 304 - \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\"","service":"semenconnect-api","timestamp":"2026-05-22 23:32:10"}
+{"level":"info","message":"✅ MongoDB connected: localhost","service":"semenconnect-api","timestamp":"2026-05-26 00:17:43"}
+{"level":"info","message":"🚀 Dabub Connect API running on http://localhost:4001","service":"semenconnect-api","timestamp":"2026-05-26 00:17:43"}
+{"level":"info","message":"📡 Socket.IO ready","service":"semenconnect-api","timestamp":"2026-05-26 00:17:43"}
+{"level":"info","message":"::1 - - [25/May/2026:21:18:32 +0000] \"GET / HTTP/1.1\" 200 - \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\"","service":"semenconnect-api","timestamp":"2026-05-26 00:18:32"}
+{"level":"info","message":"::1 - - [25/May/2026:21:18:33 +0000] \"GET /favicon.ico HTTP/1.1\" 200 - \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\"","service":"semenconnect-api","timestamp":"2026-05-26 00:18:33"}
+{"level":"info","message":"✅ MongoDB connected: localhost","service":"semenconnect-api","timestamp":"2026-05-26 00:24:03"}
+{"level":"info","message":"🚀 Dabub Connect API running on http://localhost:4001","service":"semenconnect-api","timestamp":"2026-05-26 00:24:03"}
+{"level":"info","message":"📡 Socket.IO ready","service":"semenconnect-api","timestamp":"2026-05-26 00:24:03"}
