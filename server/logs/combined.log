@@ -4099,3 +4099,6 @@
 {"level":"info","message":"✅ MongoDB connected: localhost","service":"semenconnect-api","timestamp":"2026-05-26 00:24:03"}
 {"level":"info","message":"🚀 Dabub Connect API running on http://localhost:4001","service":"semenconnect-api","timestamp":"2026-05-26 00:24:03"}
 {"level":"info","message":"📡 Socket.IO ready","service":"semenconnect-api","timestamp":"2026-05-26 00:24:03"}
+{"level":"info","message":"✅ MongoDB connected: localhost","service":"semenconnect-api","timestamp":"2026-05-26 00:25:30"}
+{"level":"info","message":"🚀 Dabub Connect API running on http://localhost:4001","service":"semenconnect-api","timestamp":"2026-05-26 00:25:30"}
+{"level":"info","message":"📡 Socket.IO ready","service":"semenconnect-api","timestamp":"2026-05-26 00:25:30"}
