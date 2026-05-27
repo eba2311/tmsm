@@ -77,7 +77,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(compression());
-app.use(limiter);
+// app.use(limiter); // Rate limiter disabled
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream }));
