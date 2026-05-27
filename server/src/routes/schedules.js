@@ -1,62 +1,118 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const Joi = require('joi');
 const Schedule = require('../models/Schedule');
+const Route = require('../models/Route');
+const Vehicle = require('../models/Vehicle');
 const Driver = require('../models/Driver');
 const Booking = require('../models/Booking');
+const User = require('../models/User');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { Op } = require('sequelize');
+
 const router = express.Router();
 
-// Public routes (no authentication required)
+// Helper to validate UUIDs
+const isValidUUID = (uuid) => {
+  const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return regex.test(uuid);
+};
+
+// GET /api/v1/schedules (public)
 router.get('/', async (req, res, next) => {
   try {
     const { routeId, date, status, page = 1, limit = 20 } = req.query;
-    const filter = {};
-    if (routeId) filter.route = routeId;
+    const offset = (page - 1) * limit;
+
+    const where = {};
+    if (routeId && isValidUUID(routeId)) where.routeId = routeId;
+    
     if (status) {
-      const parts = String(status).split(',').map((s) => s.trim()).filter(Boolean);
-      filter.status = parts.length > 1 ? { $in: parts } : parts[0];
+      const parts = String(status).split(',').map(s => s.trim()).filter(Boolean);
+      if (parts.length > 0) where.status = parts;
     }
+    
     if (date) {
       const start = new Date(date); start.setHours(0,0,0,0);
       const end = new Date(date); end.setHours(23,59,59,999);
-      filter.departureTime = { $gte: start, $lte: end };
+      where.departureTime = { [Op.between]: [start, end] };
     }
-    const skip = (page - 1) * limit;
-    const [schedules, total] = await Promise.all([
-      Schedule.find(filter)
-        .populate('route', 'name code origin destination baseFare')
-        .populate('vehicle', 'plateNumber type capacity')
-        .populate({ path: 'driver', select: 'licenseNumber', populate: { path: 'user', select: 'name phone' } })
-        .skip(skip).limit(Number(limit)).sort({ departureTime: 1 }),
-      Schedule.countDocuments(filter),
-    ]);
-    res.json({ success: true, data: schedules, pagination: { total, page: Number(page), limit: Number(limit) } });
+
+    const { count, rows: schedules } = await Schedule.findAndCountAll({
+      where,
+      include: [
+        {
+          model: Route,
+          as: 'route',
+          attributes: ['id', 'name', 'origin', 'destination', 'baseFare']
+        },
+        {
+          model: Vehicle,
+          as: 'vehicle',
+          attributes: ['id', 'plateNumber', 'type', 'capacity']
+        },
+        {
+          model: Driver,
+          as: 'driver',
+          include: [
+            { model: User, as: 'user', attributes: ['name', 'phone'] }
+          ],
+          attributes: ['id', 'licenseNumber']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['departureTime', 'ASC']]
+    });
+
+    res.json({ success: true, data: schedules, pagination: { total: count, page: Number(page), limit: Number(limit) } });
   } catch (err) { next(err); }
 });
 
 // GET /api/v1/schedules/:id/occupancy — occupied seat numbers (public)
 router.get('/:id/occupancy', async (req, res, next) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    if (!isValidUUID(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid schedule id' });
     }
-    const sid = new mongoose.Types.ObjectId(req.params.id);
-    const agg = await Booking.aggregate([
-      { $match: { schedule: sid, status: { $in: ['PENDING', 'CONFIRMED'] } } },
-      { $unwind: '$passengers' },
-      { $group: { _id: null, seats: { $addToSet: '$passengers.seatNumber' } } },
-    ]);
-    res.json({ success: true, data: { occupied: agg[0]?.seats || [] } });
+    
+    const bookings = await Booking.findAll({
+      where: {
+        scheduleId: req.params.id,
+        status: ['PENDING', 'CONFIRMED']
+      },
+      attributes: ['seatNumber']
+    });
+    
+    const occupiedSeats = bookings.map(b => b.seatNumber).filter(Boolean);
+    
+    res.json({ success: true, data: { occupied: occupiedSeats } });
   } catch (err) { next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const s = await Schedule.findById(req.params.id)
-      .populate('route').populate('vehicle').populate('driver').populate('operator','name');
-    if (!s) return res.status(404).json({ success: false, message: 'Schedule not found' });
-    res.json({ success: true, data: s });
+    if (!isValidUUID(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid id' });
+    
+    const schedule = await Schedule.findByPk(req.params.id, {
+      include: [
+        {
+          model: Route,
+          as: 'route'
+        },
+        {
+          model: Vehicle,
+          as: 'vehicle'
+        },
+        {
+          model: Driver,
+          as: 'driver'
+        }
+      ]
+    });
+      
+    if (!schedule) return res.status(404).json({ success: false, message: 'Schedule not found' });
+    
+    res.json({ success: true, data: schedule });
   } catch (err) { next(err); }
 });
 
@@ -64,9 +120,9 @@ router.get('/:id', async (req, res, next) => {
 router.use(authenticate);
 
 const scheduleCreateSchema = Joi.object({
-  route: Joi.string().hex().length(24).required(),
-  vehicle: Joi.string().hex().length(24).required(),
-  driver: Joi.string().hex().length(24).required(),
+  route: Joi.string().required(),
+  vehicle: Joi.string().required(),
+  driver: Joi.string().required(),
   departureTime: Joi.date().required(),
   estimatedArrival: Joi.date().required(),
   availableSeats: Joi.number().integer().min(0).required(),
@@ -77,110 +133,122 @@ const scheduleCreateSchema = Joi.object({
   notes: Joi.string().allow('', null),
 });
 
-router.get('/', async (req, res, next) => {
+// GET /api/v1/schedules/me/driver — logged-in driver's upcoming schedules
+router.get('/me/driver', authorize('DRIVER'), async (req, res, next) => {
   try {
-    const { routeId, date, status, page = 1, limit = 20 } = req.query;
-    const filter = {};
-    if (routeId) filter.route = routeId;
-    if (status) {
-      const parts = String(status).split(',').map((s) => s.trim()).filter(Boolean);
-      filter.status = parts.length > 1 ? { $in: parts } : parts[0];
-    }
-    if (date) {
-      const start = new Date(date); start.setHours(0,0,0,0);
-      const end = new Date(date); end.setHours(23,59,59,999);
-      filter.departureTime = { $gte: start, $lte: end };
-    }
-    const skip = (page - 1) * limit;
-    const [schedules, total] = await Promise.all([
-      Schedule.find(filter)
-        .populate('route', 'name code origin destination baseFare')
-        .populate('vehicle', 'plateNumber type capacity')
-        .populate({ path: 'driver', select: 'licenseNumber', populate: { path: 'user', select: 'name phone' } })
-        .skip(skip).limit(Number(limit)).sort({ departureTime: 1 }),
-      Schedule.countDocuments(filter),
-    ]);
-    res.json({ success: true, data: schedules, pagination: { total, page: Number(page), limit: Number(limit) } });
-  } catch (err) { next(err); }
-});
-
-// GET /api/v1/schedules/me/driver — logged-in driver's upcoming schedules (before /:id)
-router.get('/me/driver', authenticate, authorize('DRIVER'), async (req, res, next) => {
-  try {
-    const driver = await Driver.findOne({ user: req.user._id });
-    if (!driver) return res.status(404).json({ success: false, message: 'Driver profile not found for this account' });
+    const driver = await Driver.findOne({ 
+      where: { userId: req.user.id },
+      attributes: ['id']
+    });
+      
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver profile not found' });
 
     const since = new Date();
     since.setDate(since.getDate() - 1);
 
-    const schedules = await Schedule.find({ driver: driver._id, departureTime: { $gte: since } })
-      .populate('route', 'name code origin destination baseFare distance estimatedDuration')
-      .populate('vehicle', 'plateNumber type capacity status')
-      .populate({ path: 'driver', select: 'licenseNumber status', populate: { path: 'user', select: 'name phone' } })
-      .sort({ departureTime: 1 })
-      .limit(50);
+    const schedules = await Schedule.findAll({
+      where: {
+        driverId: driver.id,
+        departureTime: { [Op.gte]: since }
+      },
+      include: [
+        {
+          model: Route,
+          as: 'route',
+          attributes: ['id', 'name', 'origin', 'destination', 'baseFare', 'distance', 'estimatedDuration']
+        },
+        {
+          model: Vehicle,
+          as: 'vehicle',
+          attributes: ['id', 'plateNumber', 'type', 'capacity', 'status']
+        },
+        {
+          model: Driver,
+          as: 'driver',
+          include: [
+            { model: User, as: 'user', attributes: ['name', 'phone'] }
+          ],
+          attributes: ['id', 'licenseNumber', 'status']
+        }
+      ],
+      order: [['departureTime', 'ASC']],
+      limit: 50
+    });
 
-    res.json({ success: true, data: schedules, driverId: driver._id });
+    res.json({ success: true, data: schedules, driverId: driver.id });
   } catch (err) { next(err); }
 });
 
-// GET /api/v1/schedules/:id/occupancy — occupied seat numbers
-router.get('/:id/occupancy', async (req, res, next) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ success: false, message: 'Invalid schedule id' });
-    }
-    const sid = new mongoose.Types.ObjectId(req.params.id);
-    const agg = await Booking.aggregate([
-      { $match: { schedule: sid, status: { $in: ['PENDING', 'CONFIRMED'] } } },
-      { $unwind: '$passengers' },
-      { $group: { _id: null, seats: { $addToSet: '$passengers.seatNumber' } } },
-    ]);
-    res.json({ success: true, data: { occupied: agg[0]?.seats || [] } });
-  } catch (err) { next(err); }
-});
-
-router.get('/:id', async (req, res, next) => {
-  try {
-    const s = await Schedule.findById(req.params.id)
-      .populate('route').populate('vehicle').populate('driver').populate('operator','name');
-    if (!s) return res.status(404).json({ success: false, message: 'Schedule not found' });
-    res.json({ success: true, data: s });
-  } catch (err) { next(err); }
-});
-
-router.post('/', authenticate, authorize('SUPER_ADMIN','OPERATOR'), async (req, res, next) => {
+router.post('/', authorize('SUPER_ADMIN','OPERATOR'), async (req, res, next) => {
   try {
     const { error, value } = scheduleCreateSchema.validate(req.body, { stripUnknown: true });
     if (error) return res.status(400).json({ success: false, message: error.message });
     if (value.availableSeats > value.totalSeats) {
       return res.status(400).json({ success: false, message: 'availableSeats cannot exceed totalSeats' });
     }
-    const s = await Schedule.create({ ...value, operator: req.user._id });
-    res.status(201).json({ success: true, data: s });
+    
+    const schedule = await Schedule.create({
+      routeId: value.route,
+      vehicleId: value.vehicle,
+      driverId: value.driver,
+      departureTime: value.departureTime,
+      estimatedArrival: value.estimatedArrival,
+      availableSeats: value.availableSeats,
+      totalSeats: value.totalSeats,
+      fare: value.fare,
+      platform: value.platform,
+      status: value.status || 'SCHEDULED',
+      notes: value.notes,
+      operatorId: req.user.id
+    });
+    
+    res.status(201).json({ success: true, data: schedule });
   } catch (err) { next(err); }
 });
 
-router.put('/:id', authenticate, authorize('SUPER_ADMIN','OPERATOR'), async (req, res, next) => {
+router.put('/:id', authorize('SUPER_ADMIN','OPERATOR'), async (req, res, next) => {
   try {
-    const s = await Schedule.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!s) return res.status(404).json({ success: false, message: 'Schedule not found' });
-    res.json({ success: true, data: s });
+    if (!isValidUUID(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid id' });
+    
+    const schedule = await Schedule.findByPk(req.params.id);
+    if (!schedule) return res.status(404).json({ success: false, message: 'Schedule not found' });
+
+    await schedule.update({
+      routeId: req.body.route,
+      vehicleId: req.body.vehicle,
+      driverId: req.body.driver,
+      departureTime: req.body.departureTime,
+      estimatedArrival: req.body.estimatedArrival,
+      availableSeats: req.body.availableSeats,
+      totalSeats: req.body.totalSeats,
+      fare: req.body.fare,
+      platform: req.body.platform,
+      status: req.body.status,
+      notes: req.body.notes
+    });
+    
+    res.json({ success: true, data: schedule });
   } catch (err) { next(err); }
 });
 
-router.patch('/:id/status', authenticate, authorize('SUPER_ADMIN','OPERATOR','DRIVER'), async (req, res, next) => {
+router.patch('/:id/status', authorize('SUPER_ADMIN','OPERATOR','DRIVER'), async (req, res, next) => {
   try {
+    if (!isValidUUID(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid id' });
+    
     if (req.user.role === 'DRIVER') {
-      const driver = await Driver.findOne({ user: req.user._id });
-      const existing = await Schedule.findById(req.params.id);
-      if (!driver || !existing || String(existing.driver) !== String(driver._id)) {
+      const driver = await Driver.findOne({ where: { userId: req.user.id }, attributes: ['id'] });
+      const schedule = await Schedule.findByPk(req.params.id, { attributes: ['driverId'] });
+      
+      if (!driver || !schedule || schedule.driverId !== driver.id) {
         return res.status(403).json({ success: false, message: 'You can only update your assigned schedules' });
       }
     }
-    const s = await Schedule.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
-    if (!s) return res.status(404).json({ success: false, message: 'Schedule not found' });
-    res.json({ success: true, data: s });
+    
+    const schedule = await Schedule.findByPk(req.params.id);
+    if (!schedule) return res.status(404).json({ success: false, message: 'Schedule not found' });
+
+    await schedule.update({ status: req.body.status });
+    res.json({ success: true, data: schedule });
   } catch (err) { next(err); }
 });
 

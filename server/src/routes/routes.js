@@ -1,24 +1,29 @@
 const express = require('express');
 const Route = require('../models/Route');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 
 // GET /api/v1/routes (public)
 router.get('/', async (req, res, next) => {
   try {
-    const { status, type, search } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-    if (type) filter.transportType = type;
-    if (search) filter.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { code: { $regex: search, $options: 'i' } },
-      { 'origin.name': { $regex: search, $options: 'i' } },
-      { 'destination.name': { $regex: search, $options: 'i' } },
-    ];
+    const { search } = req.query;
+    
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { origin: { name: { [Op.iLike]: `%${search}%` } } },
+        { destination: { name: { [Op.iLike]: `%${search}%` } } }
+      ];
+    }
 
-    const routes = await Route.find(filter).sort({ name: 1 });
+    const routes = await Route.findAll({
+      where,
+      order: [['name', 'ASC']]
+    });
+    
     res.json({ success: true, data: routes });
   } catch (err) { next(err); }
 });
@@ -26,8 +31,10 @@ router.get('/', async (req, res, next) => {
 // GET /api/v1/routes/:id
 router.get('/:id', async (req, res, next) => {
   try {
-    const route = await Route.findById(req.params.id).populate('operator', 'name');
+    const route = await Route.findByPk(req.params.id);
+      
     if (!route) return res.status(404).json({ success: false, message: 'Route not found' });
+    
     res.json({ success: true, data: route });
   } catch (err) { next(err); }
 });
@@ -35,7 +42,20 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/v1/routes
 router.post('/', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const route = await Route.create({ ...req.body, operator: req.user._id });
+    const { name, origin, destination, distance, estimatedDuration, baseFare } = req.body;
+    
+    if (!name) return res.status(400).json({ success: false, message: 'Route name is required' });
+
+    const route = await Route.create({
+      name,
+      origin: origin || null,
+      destination: destination || null,
+      distance: distance ? parseFloat(distance) : null,
+      estimatedDuration: estimatedDuration ? parseInt(estimatedDuration) : null,
+      baseFare: baseFare ? parseFloat(baseFare) : null,
+      operatorId: req.user.id
+    });
+    
     res.status(201).json({ success: true, data: route });
   } catch (err) { next(err); }
 });
@@ -43,8 +63,20 @@ router.post('/', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req,
 // PUT /api/v1/routes/:id
 router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const route = await Route.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { name, origin, destination, distance, estimatedDuration, baseFare } = req.body;
+    
+    const route = await Route.findByPk(req.params.id);
     if (!route) return res.status(404).json({ success: false, message: 'Route not found' });
+
+    await route.update({
+      name,
+      origin: origin || null,
+      destination: destination || null,
+      distance: distance ? parseFloat(distance) : null,
+      estimatedDuration: estimatedDuration ? parseInt(estimatedDuration) : null,
+      baseFare: baseFare ? parseFloat(baseFare) : null
+    });
+    
     res.json({ success: true, data: route });
   } catch (err) { next(err); }
 });
@@ -52,8 +84,11 @@ router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (re
 // DELETE /api/v1/routes/:id
 router.delete('/:id', authenticate, authorize('SUPER_ADMIN'), async (req, res, next) => {
   try {
-    await Route.findByIdAndUpdate(req.params.id, { status: 'INACTIVE' });
-    res.json({ success: true, message: 'Route deactivated' });
+    const route = await Route.findByPk(req.params.id);
+    if (!route) return res.status(404).json({ success: false, message: 'Route not found' });
+
+    await route.destroy();
+    res.json({ success: true, message: 'Route deleted successfully' });
   } catch (err) { next(err); }
 });
 
