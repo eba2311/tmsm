@@ -159,7 +159,7 @@ router.patch('/:id/cancel', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), 
     if (!log) return res.status(404).json({ success: false, message: 'Maintenance schedule not found' });
 
     await log.update({ status: 'CANCELLED' });
-    res.json({ success: true, data: { _id: req.params.id, status: 'CANCELLED' } });
+    res.json({ success: true, data: { id: req.params.id, status: 'CANCELLED' } });
   } catch (error) { next(error); }
 });
 
@@ -189,7 +189,7 @@ router.get('/summary/overview', authenticate, authorize('SUPER_ADMIN', 'OPERATOR
     res.json({
       success: true,
       data: {
-        byStatus: [{ _id: 'COMPLETED', count: completedCount, totalCost }],
+        byStatus: [{ id: 'COMPLETED', count: completedCount, totalCost }],
         dueSoon: 0,
         overdue: 0,
       },

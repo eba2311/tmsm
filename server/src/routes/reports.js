@@ -64,12 +64,12 @@ router.get('/revenue', async (req, res, next) => {
         key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       }
 
-      if (!grouped[key]) grouped[key] = { _id: key, revenue: 0, count: 0 };
+      if (!grouped[key]) grouped[key] = { id: key, revenue: 0, count: 0 };
       grouped[key].revenue += (parseFloat(b.amountPaid) || 0);
       grouped[key].count += 1;
     }
 
-    const aggregatedArray = Object.values(grouped).sort((a, b) => a._id.localeCompare(b._id));
+    const aggregatedArray = Object.values(grouped).sort((a, b) => a.id.localeCompare(b.id));
 
     res.json({ success: true, data: aggregatedArray });
   } catch (err) { next(err); }
@@ -82,7 +82,7 @@ router.get('/bookings', async (req, res, next) => {
 
     const statsObj = {};
     for (const b of bookings) {
-      if (!statsObj[b.status]) statsObj[b.status] = { _id: b.status, count: 0, revenue: 0 };
+      if (!statsObj[b.status]) statsObj[b.status] = { id: b.status, count: 0, revenue: 0 };
       statsObj[b.status].count += 1;
       statsObj[b.status].revenue += (parseFloat(b.amountPaid) || 0);
     }
@@ -99,7 +99,7 @@ router.get('/fleet', async (req, res, next) => {
     const statsObj = {};
     for (const v of vehicles) {
       const key = `${v.status}_${v.type}`;
-      if (!statsObj[key]) statsObj[key] = { _id: { status: v.status, type: v.type }, count: 0 };
+      if (!statsObj[key]) statsObj[key] = { id: { status: v.status, type: v.type }, count: 0 };
       statsObj[key].count += 1;
     }
 
@@ -135,7 +135,7 @@ router.get('/routes', async (req, res, next) => {
       
       const rId = route.id;
       if (!routeStats[rId]) {
-        routeStats[rId] = { _id: rId, routeName: route.name, bookings: 0, revenue: 0 };
+        routeStats[rId] = { id: rId, routeName: route.name, bookings: 0, revenue: 0 };
       }
       routeStats[rId].bookings += 1;
       routeStats[rId].revenue += (parseFloat(b.amountPaid) || 0);

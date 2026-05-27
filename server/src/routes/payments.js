@@ -79,7 +79,7 @@ router.get('/summary', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, ne
     let total = 0;
     for (const b of bookings) total += parseFloat(b.amountPaid) || 0;
 
-    res.json({ success: true, data: [{ _id: 'CASH', total, count: bookings.length }] });
+    res.json({ success: true, data: [{ id: 'CASH', total, count: bookings.length }] });
   } catch (err) { next(err); }
 });
 

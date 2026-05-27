@@ -58,7 +58,7 @@ router.get('/stats/overview', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, 
       return acc;
     }, {});
     
-    const stats = Object.keys(statsObj).map(status => ({ _id: status, count: statsObj[status] }));
+    const stats = Object.keys(statsObj).map(status => ({ id: status, count: statsObj[status] }));
     
     res.json({ success: true, data: stats });
   } catch (err) { next(err); }

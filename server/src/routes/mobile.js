@@ -7,9 +7,9 @@ router.get('/users', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (
   try {
     // Mock data for mobile users
     const users = [
-      { _id: '1', name: 'Abebe Bikila', email: 'abebe@example.com', platform: 'android', appVersion: '2.1.0', lastActive: new Date(), isActive: true },
-      { _id: '2', name: 'Haile Gebrselassie', email: 'haile@example.com', platform: 'ios', appVersion: '2.1.0', lastActive: new Date(), isActive: true },
-      { _id: '3', name: 'Derartu Tulu', email: 'derartu@example.com', platform: 'android', appVersion: '2.0.5', lastActive: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), isActive: false },
+      { id: '1', name: 'Abebe Bikila', email: 'abebe@example.com', platform: 'android', appVersion: '2.1.0', lastActive: new Date(), isActive: true },
+      { id: '2', name: 'Haile Gebrselassie', email: 'haile@example.com', platform: 'ios', appVersion: '2.1.0', lastActive: new Date(), isActive: true },
+      { id: '3', name: 'Derartu Tulu', email: 'derartu@example.com', platform: 'android', appVersion: '2.0.5', lastActive: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), isActive: false },
     ];
     res.json({ success: true, data: users });
   } catch (err) { next(err); }
