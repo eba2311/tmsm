@@ -120,11 +120,12 @@ END $$;
 -- ==========================================
 
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(50),
+    password VARCHAR(255) NOT NULL,
 
     role user_role DEFAULT 'PASSENGER',
 
@@ -135,6 +136,9 @@ CREATE TABLE IF NOT EXISTS users (
 
     locale user_locale DEFAULT 'en',
 
+    refresh_token TEXT,
+    password_reset_token TEXT,
+    password_reset_expires TIMESTAMP WITH TIME ZONE,
     last_login TIMESTAMP WITH TIME ZONE,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
