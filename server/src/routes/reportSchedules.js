@@ -1,180 +1,70 @@
 const express = require('express');
-const router = express.Router();
 const ReportSchedule = require('../models/ReportSchedule');
 const { authenticate, authorize } = require('../middlewares/auth');
 
-// Get all report schedules
-router.get('/', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+const router = express.Router();
+router.use(authenticate, authorize('SUPER_ADMIN'));
+
+// GET /api/v1/report-schedules
+router.get('/', async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, isActive } = req.query;
+    const { page = 1, limit = 20, status } = req.query;
+    const offset = (page - 1) * limit;
 
-    const query = {};
-    if (isActive !== undefined) query.isActive = isActive === 'true';
+    const where = {};
+    if (status) where.status = status;
 
-    const schedules = await ReportSchedule.find(query)
-      .populate('createdBy', 'name email')
-      .sort({ nextRun: 1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
-
-    const total = await ReportSchedule.countDocuments(query);
-
-    res.json({
-      success: true,
-      data: schedules,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit),
-      },
+    const { count, rows: schedules } = await ReportSchedule.findAndCountAll({
+      where,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['createdAt', 'DESC']]
     });
-  } catch (error) { next(error); }
+
+    res.json({ success: true, data: schedules, pagination: { total: count, page: Number(page), limit: Number(limit) } });
+  } catch (err) { next(err); }
 });
 
-// Get report schedule by ID
-router.get('/:id', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
-  try {
-    const schedule = await ReportSchedule.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .lean();
-
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report schedule not found',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: schedule,
-    });
-  } catch (error) { next(error); }
-});
-
-// Create new report schedule
-router.post('/', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+// POST /api/v1/report-schedules
+router.post('/', async (req, res, next) => {
   try {
     const schedule = await ReportSchedule.create({
       ...req.body,
-      createdBy: req.user._id,
+      status: req.body.status || 'ACTIVE'
     });
-
-    const populatedSchedule = await ReportSchedule.findById(schedule._id)
-      .populate('createdBy', 'name email')
-      .lean();
-
-    res.status(201).json({
-      success: true,
-      data: populatedSchedule,
-    });
-  } catch (error) { next(error); }
+    res.status(201).json({ success: true, data: schedule });
+  } catch (err) { next(err); }
 });
 
-// Update report schedule
-router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+// GET /api/v1/report-schedules/:id
+router.get('/:id', async (req, res, next) => {
   try {
-    const schedule = await ReportSchedule.findById(req.params.id);
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report schedule not found',
-      });
-    }
-
-    const updatedSchedule = await ReportSchedule.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true, runValidators: true }
-    )
-      .populate('createdBy', 'name email')
-      .lean();
-
-    res.json({
-      success: true,
-      data: updatedSchedule,
-    });
-  } catch (error) { next(error); }
+    const schedule = await ReportSchedule.findByPk(req.params.id);
+    if (!schedule) return res.status(404).json({ success: false, message: 'Report schedule not found' });
+    res.json({ success: true, data: schedule });
+  } catch (err) { next(err); }
 });
 
-// Delete report schedule
-router.delete('/:id', authenticate, authorize('SUPER_ADMIN'), async (req, res, next) => {
+// PUT /api/v1/report-schedules/:id
+router.put('/:id', async (req, res, next) => {
   try {
-    const schedule = await ReportSchedule.findById(req.params.id);
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report schedule not found',
-      });
-    }
+    const schedule = await ReportSchedule.findByPk(req.params.id);
+    if (!schedule) return res.status(404).json({ success: false, message: 'Report schedule not found' });
 
-    await ReportSchedule.findByIdAndDelete(req.params.id);
-
-    res.json({
-      success: true,
-      message: 'Report schedule deleted successfully',
-    });
-  } catch (error) { next(error); }
+    await schedule.update(req.body);
+    res.json({ success: true, data: schedule });
+  } catch (err) { next(err); }
 });
 
-// Toggle schedule active status
-router.patch('/:id/toggle', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+// DELETE /api/v1/report-schedules/:id
+router.delete('/:id', async (req, res, next) => {
   try {
-    const schedule = await ReportSchedule.findById(req.params.id);
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report schedule not found',
-      });
-    }
+    const schedule = await ReportSchedule.findByPk(req.params.id);
+    if (!schedule) return res.status(404).json({ success: false, message: 'Report schedule not found' });
 
-    schedule.isActive = !schedule.isActive;
-    if (schedule.isActive) {
-      schedule.calculateNextRun();
-    } else {
-      schedule.nextRun = null;
-    }
-    await schedule.save();
-
-    const updatedSchedule = await ReportSchedule.findById(schedule._id)
-      .populate('createdBy', 'name email')
-      .lean();
-
-    res.json({
-      success: true,
-      data: updatedSchedule,
-    });
-  } catch (error) { next(error); }
-});
-
-// Run schedule manually
-router.post('/:id/run', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
-  try {
-    const schedule = await ReportSchedule.findById(req.params.id);
-    if (!schedule) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report schedule not found',
-      });
-    }
-
-    // Update last run time
-    schedule.lastRun = new Date();
-    await schedule.save();
-
-    // In a real implementation, you would generate and send the report here
-    // For now, we'll just return a success message
-    res.json({
-      success: true,
-      message: 'Report generated and sent successfully',
-      data: {
-        scheduleId: schedule._id,
-        runAt: schedule.lastRun,
-      },
-    });
-  } catch (error) { next(error); }
+    await schedule.destroy();
+    res.json({ success: true, message: 'Report schedule deleted' });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;
