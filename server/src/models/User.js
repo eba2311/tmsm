@@ -40,10 +40,12 @@ const User = sequelize.define(
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+      field: 'is_active',
     },
     isMfaEnabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+      field: 'is_mfa_enabled',
     },
     avatar: {
       type: DataTypes.STRING,

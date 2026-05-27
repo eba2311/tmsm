@@ -73,7 +73,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
     const valid = await user.comparePassword(value.password);
     if (!valid) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
-    if (!user.isActive) return res.status(403).json({ success: false, message: 'Account deactivated' });
+    if (!user.getDataValue('isActive')) return res.status(403).json({ success: false, message: 'Account deactivated' });
 
     const { accessToken, refreshToken } = signTokens(user);
     
