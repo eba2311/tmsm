@@ -160,6 +160,30 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+    CREATE TYPE drivers_status AS ENUM (
+        'ACTIVE',
+        'INACTIVE',
+        'ON_LEAVE',
+        'SUSPENDED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE drivers_license_class AS ENUM (
+        'A',
+        'B',
+        'C',
+        'D',
+        'E',
+        'F'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ==========================================
 -- 4. USERS TABLE
 -- ==========================================
@@ -950,54 +974,22 @@ CREATE INDEX IF NOT EXISTS idx_report_schedules_type
 ON report_schedules(report_type);
 
 -- ==========================================
--- 16. ENABLE RLS
+-- 16. ENABLE RLS (DISABLED FOR DEVELOPMENT)
 -- ==========================================
 
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+-- RLS disabled for development - can be enabled for production
+-- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- ==========================================
--- 25. RLS POLICIES
+-- 25. RLS POLICIES (DISABLED FOR DEVELOPMENT)
 -- ==========================================
 
-DO $$ BEGIN
-    CREATE POLICY "Users can view their own data"
-    ON users
-    FOR SELECT
-    USING (auth.uid() = id);
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE POLICY "Public can view active vehicles"
-    ON vehicles
-    FOR SELECT
-    USING (status = 'ACTIVE'::vehicle_status);
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE POLICY "Passengers can view their bookings"
-    ON bookings
-    FOR SELECT
-    USING (auth.uid() = passenger_id);
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE POLICY "Users can view their own notifications"
-    ON notifications
-    FOR SELECT
-    USING (auth.uid() = user_id);
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-END $$;
+-- RLS policies disabled for development
+-- Can be enabled for production when Supabase Auth is properly configured
 
 -- ==========================================
 -- 26. UPDATED_AT FUNCTION
