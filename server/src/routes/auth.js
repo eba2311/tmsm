@@ -48,7 +48,8 @@ router.post('/register', authLimiter, async (req, res, next) => {
       phone: value.phone,
       password: value.password,
       role: value.role || 'PASSENGER',
-      locale: value.locale || 'en'
+      locale: value.locale || 'en',
+      isActive: true
     });
 
     const { accessToken, refreshToken } = signTokens(user);
@@ -57,8 +58,12 @@ router.post('/register', authLimiter, async (req, res, next) => {
     await user.update({ refreshToken });
 
     const userJson = user.toJSON();
+    console.log('[REGISTER] Success for:', value.email.toLowerCase());
     res.status(201).json({ success: true, data: { accessToken, refreshToken, user: userJson } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[REGISTER] Error:', err);
+    next(err);
+  }
 });
 
 // POST /api/v1/auth/login
@@ -68,12 +73,21 @@ router.post('/login', authLimiter, async (req, res, next) => {
     if (error) return res.status(400).json({ success: false, message: error.message });
 
     const user = await User.findOne({ where: { email: value.email.toLowerCase() } });
-    if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (!user) {
+      console.log('[LOGIN] User not found:', value.email.toLowerCase());
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
 
     const valid = await user.comparePassword(value.password);
-    if (!valid) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (!valid) {
+      console.log('[LOGIN] Invalid password for:', value.email.toLowerCase());
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
 
-    if (!user.isActive) return res.status(403).json({ success: false, message: 'Account deactivated' });
+    if (!user.isActive) {
+      console.log('[LOGIN] Account deactivated:', value.email.toLowerCase());
+      return res.status(403).json({ success: false, message: 'Account deactivated' });
+    }
 
     const { accessToken, refreshToken } = signTokens(user);
     
@@ -84,8 +98,12 @@ router.post('/login', authLimiter, async (req, res, next) => {
     });
 
     const userJson = user.toJSON();
+    console.log('[LOGIN] Success for:', value.email.toLowerCase());
     res.json({ success: true, data: { accessToken, refreshToken, user: userJson } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[LOGIN] Error:', err);
+    next(err);
+  }
 });
 
 // POST /api/v1/auth/refresh

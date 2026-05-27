@@ -88,7 +88,16 @@ const User = sequelize.define(
 );
 
 User.prototype.comparePassword = async function (candidate) {
-  return bcrypt.compare(candidate, this.password);
+  try {
+    const result = await bcrypt.compare(candidate, this.password);
+    if (!result) {
+      console.log('[COMPARE_PASSWORD] Failed for user:', this.email);
+    }
+    return result;
+  } catch (err) {
+    console.error('[COMPARE_PASSWORD] Error:', err);
+    return false;
+  }
 };
 
 User.prototype.toJSON = function () {
