@@ -603,6 +603,144 @@ CREATE INDEX IF NOT EXISTS maintenance_logs_status ON maintenance_logs(status);
 CREATE INDEX IF NOT EXISTS maintenance_logs_next_service_date ON maintenance_logs(next_service_date);
 CREATE INDEX IF NOT EXISTS maintenance_logs_priority ON maintenance_logs(priority);
 
+-- Migration: Add missing columns to existing maintenance_logs table
+DO $$
+BEGIN
+    -- Add type column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'type') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN type maintenance_log_type NOT NULL DEFAULT 'ROUTINE';
+    END IF;
+
+    -- Add start_date column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'start_date') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN start_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+    END IF;
+
+    -- Add end_date column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'end_date') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN end_date TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    -- Add status column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'status') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN status maintenance_log_status DEFAULT 'SCHEDULED';
+    END IF;
+
+    -- Add priority column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'priority') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN priority maintenance_log_priority DEFAULT 'MEDIUM';
+    END IF;
+
+    -- Add mileage_at_service column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'mileage_at_service') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN mileage_at_service NUMERIC(10,2);
+    END IF;
+
+    -- Add serviced_by column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'serviced_by') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN serviced_by VARCHAR(255);
+    END IF;
+
+    -- Add garage column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'garage') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN garage VARCHAR(255);
+    END IF;
+
+    -- Add parts_replaced column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'parts_replaced') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN parts_replaced JSONB DEFAULT '[]';
+    END IF;
+
+    -- Add next_service_mileage column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'next_service_mileage') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN next_service_mileage NUMERIC(10,2);
+    END IF;
+
+    -- Add next_service_date column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'next_service_date') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN next_service_date TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    -- Add attachments column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'attachments') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN attachments TEXT[] DEFAULT ARRAY[]::TEXT[];
+    END IF;
+
+    -- Add created_by_id column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'created_by_id') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN created_by_id UUID REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+
+    -- Add notes column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'notes') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN notes TEXT;
+    END IF;
+
+    -- Add is_recurring column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'is_recurring') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    -- Add recurring_interval column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'recurring_interval') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN recurring_interval maintenance_log_recurring_interval;
+    END IF;
+
+    -- Add recurring_interval_value column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'recurring_interval_value') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN recurring_interval_value INTEGER;
+    END IF;
+
+    -- Add reminder_days column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'reminder_days') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN reminder_days INTEGER DEFAULT 7;
+    END IF;
+
+    -- Add reminder_sent column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'reminder_sent') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN reminder_sent BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    -- Add reminder_date column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'reminder_date') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN reminder_date TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    -- Add assigned_to_id column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'assigned_to_id') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN assigned_to_id UUID REFERENCES drivers(id) ON DELETE SET NULL;
+    END IF;
+
+    -- Add estimated_duration column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'estimated_duration') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN estimated_duration INTEGER;
+    END IF;
+
+    -- Add actual_duration column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'actual_duration') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN actual_duration INTEGER;
+    END IF;
+
+    -- Add completed_by_id column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'completed_by_id') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN completed_by_id UUID REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+
+    -- Add completed_at column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'completed_at') THEN
+        ALTER TABLE maintenance_logs ADD COLUMN completed_at TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    -- Drop old columns if they exist
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'date_performed') THEN
+        ALTER TABLE maintenance_logs DROP COLUMN date_performed;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_logs' AND column_name = 'performed_by') THEN
+        ALTER TABLE maintenance_logs DROP COLUMN performed_by;
+    END IF;
+END $$;
+
 -- ==========================================
 -- 13. AUDIT LOGS
 -- ==========================================
