@@ -1,10 +1,11 @@
 const express = require('express');
 const Booking = require('../models/Booking');
-const Payment = require('../models/Payment');
 const Vehicle = require('../models/Vehicle');
 const Driver = require('../models/Driver');
 const Schedule = require('../models/Schedule');
+const Route = require('../models/Route');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 router.use(authenticate, authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'));
@@ -12,19 +13,21 @@ router.use(authenticate, authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'));
 // GET /api/v1/reports/overview
 router.get('/overview', async (req, res, next) => {
   try {
-    const [totalBookings, totalRevenue, totalVehicles, totalDrivers, activeSchedules] = await Promise.all([
-      Booking.countDocuments(),
-      Payment.aggregate([{ $match: { status: 'SUCCESS' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      Vehicle.countDocuments({ status: 'ACTIVE' }),
-      Driver.countDocuments({ status: 'ACTIVE' }),
-      Schedule.countDocuments({ status: { $in: ['SCHEDULED', 'BOARDING', 'IN_TRANSIT'] } }),
+    const [totalBookings, bookings, totalVehicles, totalDrivers, activeSchedules] = await Promise.all([
+      Booking.count(),
+      Booking.findAll({ where: { status: ['CONFIRMED', 'USED'] }, attributes: ['amountPaid'] }),
+      Vehicle.count({ where: { status: 'ACTIVE' } }),
+      Driver.count({ where: { status: 'ACTIVE' } }),
+      Schedule.count({ where: { status: ['SCHEDULED', 'BOARDING', 'IN_TRANSIT'] } })
     ]);
+
+    let totalRevenue = bookings.reduce((sum, b) => sum + (parseFloat(b.amountPaid) || 0), 0);
 
     res.json({
       success: true,
       data: {
         totalBookings,
-        totalRevenue: totalRevenue[0]?.total || 0,
+        totalRevenue,
         totalVehicles,
         totalDrivers,
         activeSchedules,
@@ -40,55 +43,107 @@ router.get('/revenue', async (req, res, next) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - Number(days));
 
-    const groupFormat = period === 'monthly'
-      ? { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }
-      : period === 'weekly'
-      ? { year: { $year: '$createdAt' }, week: { $week: '$createdAt' } }
-      : { year: { $year: '$createdAt' }, month: { $month: '$createdAt' }, day: { $dayOfMonth: '$createdAt' } };
+    const bookings = await Booking.findAll({
+      where: {
+        status: ['CONFIRMED', 'USED'],
+        createdAt: { [Op.gte]: startDate }
+      },
+      attributes: ['amountPaid', 'createdAt']
+    });
 
-    const data = await Payment.aggregate([
-      { $match: { status: 'SUCCESS', createdAt: { $gte: startDate } } },
-      { $group: { _id: groupFormat, revenue: { $sum: '$amount' }, count: { $sum: 1 } } },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-    ]);
+    const grouped = {};
+    for (const b of bookings) {
+      const d = new Date(b.createdAt);
+      let key;
+      if (period === 'monthly') {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      } else if (period === 'weekly') {
+        const week = Math.ceil(d.getDate() / 7);
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-W${week}`;
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
 
-    res.json({ success: true, data });
+      if (!grouped[key]) grouped[key] = { _id: key, revenue: 0, count: 0 };
+      grouped[key].revenue += (parseFloat(b.amountPaid) || 0);
+      grouped[key].count += 1;
+    }
+
+    const aggregatedArray = Object.values(grouped).sort((a, b) => a._id.localeCompare(b._id));
+
+    res.json({ success: true, data: aggregatedArray });
   } catch (err) { next(err); }
 });
 
 // GET /api/v1/reports/bookings
 router.get('/bookings', async (req, res, next) => {
   try {
-    const stats = await Booking.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 }, revenue: { $sum: '$totalAmount' } } },
-    ]);
-    res.json({ success: true, data: stats });
+    const bookings = await Booking.findAll({ attributes: ['status', 'amountPaid'] });
+
+    const statsObj = {};
+    for (const b of bookings) {
+      if (!statsObj[b.status]) statsObj[b.status] = { _id: b.status, count: 0, revenue: 0 };
+      statsObj[b.status].count += 1;
+      statsObj[b.status].revenue += (parseFloat(b.amountPaid) || 0);
+    }
+
+    res.json({ success: true, data: Object.values(statsObj) });
   } catch (err) { next(err); }
 });
 
 // GET /api/v1/reports/fleet
 router.get('/fleet', async (req, res, next) => {
   try {
-    const stats = await Vehicle.aggregate([
-      { $group: { _id: { status: '$status', type: '$type' }, count: { $sum: 1 } } },
-    ]);
-    res.json({ success: true, data: stats });
+    const vehicles = await Vehicle.findAll({ attributes: ['status', 'type'] });
+
+    const statsObj = {};
+    for (const v of vehicles) {
+      const key = `${v.status}_${v.type}`;
+      if (!statsObj[key]) statsObj[key] = { _id: { status: v.status, type: v.type }, count: 0 };
+      statsObj[key].count += 1;
+    }
+
+    res.json({ success: true, data: Object.values(statsObj) });
   } catch (err) { next(err); }
 });
 
 // GET /api/v1/reports/routes
 router.get('/routes', async (req, res, next) => {
   try {
-    const data = await Booking.aggregate([
-      { $lookup: { from: 'schedules', localField: 'schedule', foreignField: '_id', as: 'scheduleData' } },
-      { $unwind: '$scheduleData' },
-      { $lookup: { from: 'routes', localField: 'scheduleData.route', foreignField: '_id', as: 'routeData' } },
-      { $unwind: '$routeData' },
-      { $group: { _id: '$routeData._id', routeName: { $first: '$routeData.name' }, bookings: { $sum: 1 }, revenue: { $sum: '$totalAmount' } } },
-      { $sort: { revenue: -1 } },
-      { $limit: 10 },
-    ]);
-    res.json({ success: true, data });
+    const bookings = await Booking.findAll({
+      where: { status: ['CONFIRMED', 'USED'] },
+      attributes: ['amountPaid'],
+      include: [
+        {
+          model: Schedule,
+          as: 'schedule',
+          include: [
+            {
+              model: Route,
+              as: 'route',
+              attributes: ['id', 'name']
+            }
+          ]
+        }
+      ]
+    });
+
+    const routeStats = {};
+    for (const b of bookings) {
+      const route = b.schedule?.route;
+      if (!route) continue;
+      
+      const rId = route.id;
+      if (!routeStats[rId]) {
+        routeStats[rId] = { _id: rId, routeName: route.name, bookings: 0, revenue: 0 };
+      }
+      routeStats[rId].bookings += 1;
+      routeStats[rId].revenue += (parseFloat(b.amountPaid) || 0);
+    }
+
+    const sortedData = Object.values(routeStats).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+
+    res.json({ success: true, data: sortedData });
   } catch (err) { next(err); }
 });
 
