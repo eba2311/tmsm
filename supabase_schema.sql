@@ -177,22 +177,30 @@ CREATE TABLE IF NOT EXISTS routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     name VARCHAR(255) NOT NULL,
+    name_am VARCHAR(255),
 
-    start_location_name VARCHAR(255),
-    end_location_name VARCHAR(255),
+    code VARCHAR(50) UNIQUE NOT NULL,
 
-    start_coordinates geometry(Point, 4326),
-    end_coordinates geometry(Point, 4326),
+    origin JSONB NOT NULL DEFAULT '{"name":"","nameAm":null,"coordinates":{"type":"Point","coordinates":[37.5543,6.0333]}}',
+    destination JSONB NOT NULL DEFAULT '{"name":"","nameAm":null,"coordinates":{"type":"Point","coordinates":[0,0]}}',
+    stops JSONB DEFAULT '[]',
 
-    distance NUMERIC(10,2),
+    distance NUMERIC(10,2) NOT NULL,
+    estimated_duration INTEGER NOT NULL,
+    base_fare NUMERIC(10,2) NOT NULL,
 
-    estimated_duration INTEGER,
+    status route_status DEFAULT 'ACTIVE',
+    transport_type transport_type[] DEFAULT ARRAY['BUS']::transport_type[],
+    is_intercity BOOLEAN DEFAULT FALSE,
 
-    base_fare NUMERIC(10,2),
+    operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX routes_code ON routes(code);
+CREATE INDEX routes_status ON routes(status);
 
 -- ==========================================
 -- 7. VEHICLES TABLE
