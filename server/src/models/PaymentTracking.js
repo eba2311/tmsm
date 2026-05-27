@@ -1,144 +1,136 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const paymentTrackingSchema = new mongoose.Schema({
-  transactionId: {
-    type: String,
-    required: true,
-    unique: true,
-    index: true,
-  },
-  booking: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking',
-    required: true,
-  },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  amount: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  currency: {
-    type: String,
-    default: 'ETB',
-    enum: ['ETB', 'USD', 'EUR'],
-  },
-  method: {
-    type: String,
-    required: true,
-    enum: ['TELEBIRR', 'CBE_BIRR', 'AMOLE', 'CASH', 'CARD', 'BANK_TRANSFER'],
-  },
-  status: {
-    type: String,
-    required: true,
-    enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED', 'CANCELLED'],
-    default: 'PENDING',
-  },
-  paymentGateway: {
-    type: String,
-    required: function() {
-      return this.method !== 'CASH';
+const PaymentTracking = sequelize.define(
+  'PaymentTracking',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    transactionId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    bookingId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'bookings',
+        key: 'id',
+      },
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    currency: {
+      type: DataTypes.ENUM('ETB', 'USD', 'EUR'),
+      defaultValue: 'ETB',
+    },
+    method: {
+      type: DataTypes.ENUM('TELEBIRR', 'CBE_BIRR', 'AMOLE', 'CASH', 'CARD', 'BANK_TRANSFER'),
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED', 'CANCELLED'),
+      defaultValue: 'PENDING',
+    },
+    paymentGateway: {
+      type: DataTypes.STRING,
+    },
+    gatewayTransactionId: {
+      type: DataTypes.STRING,
+    },
+    gatewayResponse: {
+      type: DataTypes.JSON,
+    },
+    metadata: {
+      type: DataTypes.JSON,
+      defaultValue: {
+        phoneNumber: null,
+        cardLast4: null,
+        cardBrand: null,
+        bankName: null,
+        accountNumber: null,
+        receiptNumber: null,
+        notes: null,
+      },
+    },
+    timestampsInitiated: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+    timestampsCompleted: {
+      type: DataTypes.DATE,
+    },
+    timestampsFailed: {
+      type: DataTypes.DATE,
+    },
+    timestampsRefunded: {
+      type: DataTypes.DATE,
+    },
+    retryCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    failureReason: {
+      type: DataTypes.TEXT,
+    },
+    refundAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    refundReason: {
+      type: DataTypes.TEXT,
+    },
+    createdById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    updatedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
   },
-  gatewayTransactionId: {
-    type: String,
-  },
-  gatewayResponse: {
-    type: mongoose.Schema.Types.Mixed,
-  },
-  metadata: {
-    phoneNumber: String,
-    cardLast4: String,
-    cardBrand: String,
-    bankName: String,
-    accountNumber: String,
-    receiptNumber: String,
-    notes: String,
-  },
-  timestamps: {
-    initiated: {
-      type: Date,
-      default: Date.now,
-    },
-    completed: Date,
-    failed: Date,
-    refunded: Date,
-  },
-  retryCount: {
-    type: Number,
-    default: 0,
-  },
-  failureReason: {
-    type: String,
-  },
-  refundAmount: {
-    type: Number,
-    default: 0,
-  },
-  refundReason: {
-    type: String,
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  updatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-}, {
-  timestamps: true,
-});
-
-// Indexes for efficient queries
-paymentTrackingSchema.index({ user: 1, createdAt: -1 });
-paymentTrackingSchema.index({ booking: 1 });
-paymentTrackingSchema.index({ status: 1, createdAt: -1 });
-paymentTrackingSchema.index({ method: 1, status: 1 });
-paymentTrackingSchema.index({ 'timestamps.initiated': -1 });
-
-// Virtual for payment duration
-paymentTrackingSchema.virtual('duration').get(function() {
-  if (this.status === 'COMPLETED' && this.timestamps.completed) {
-    return Math.floor((this.timestamps.completed - this.timestamps.initiated) / 1000);
+  {
+    tableName: 'payment_tracking',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['user_id', 'created_at'],
+      },
+      {
+        fields: ['booking_id'],
+      },
+      {
+        fields: ['status', 'created_at'],
+      },
+      {
+        fields: ['method', 'status'],
+      },
+      {
+        fields: ['timestamps_initiated'],
+      },
+    ],
   }
-  return null;
-});
+);
 
-// Virtual for payment age
-paymentTrackingSchema.virtual('age').get(function() {
-  return Math.floor((Date.now() - this.timestamps.initiated) / 1000 / 60); // in minutes
-});
-
-// Method to mark as completed
-paymentTrackingSchema.methods.markCompleted = function(gatewayTransactionId, gatewayResponse) {
-  this.status = 'COMPLETED';
-  this.timestamps.completed = new Date();
-  if (gatewayTransactionId) this.gatewayTransactionId = gatewayTransactionId;
-  if (gatewayResponse) this.gatewayResponse = gatewayResponse;
-  return this.save();
-};
-
-// Method to mark as failed
-paymentTrackingSchema.methods.markFailed = function(reason) {
-  this.status = 'FAILED';
-  this.timestamps.failed = new Date();
-  this.failureReason = reason;
-  this.retryCount += 1;
-  return this.save();
-};
-
-// Method to process refund
-paymentTrackingSchema.methods.processRefund = function(refundAmount, reason) {
-  this.status = 'REFUNDED';
-  this.timestamps.refunded = new Date();
-  this.refundAmount = refundAmount;
-  this.refundReason = reason;
-  return this.save();
-};
-
-module.exports = mongoose.model('PaymentTracking', paymentTrackingSchema);
+module.exports = PaymentTracking;

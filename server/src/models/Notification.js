@@ -1,33 +1,69 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const notificationSchema = new mongoose.Schema(
+const Notification = sequelize.define(
+  'Notification',
   {
-    recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    recipientId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
     type: {
-      type: String,
-      enum: [
+      type: DataTypes.ENUM(
         'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED',
         'SCHEDULE_DELAY', 'SCHEDULE_CANCELLED', 'VEHICLE_MAINTENANCE', 'DRIVER_ALERT',
-        'SYSTEM', 'PROMOTION',
-      ],
-      required: true,
+        'SYSTEM', 'PROMOTION'
+      ),
+      allowNull: false,
     },
-    title: { type: String, required: true },
-    titleAm: { type: String },
-    message: { type: String, required: true },
-    messageAm: { type: String },
-    isRead: { type: Boolean, default: false },
-    readAt: { type: Date },
-    data: { type: mongoose.Schema.Types.Mixed },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    titleAm: {
+      type: DataTypes.STRING,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    messageAm: {
+      type: DataTypes.TEXT,
+    },
+    isRead: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    readAt: {
+      type: DataTypes.DATE,
+    },
+    data: {
+      type: DataTypes.JSON,
+    },
     channel: {
-      type: [String],
-      enum: ['IN_APP', 'SMS', 'EMAIL', 'PUSH'],
-      default: ['IN_APP'],
+      type: DataTypes.ARRAY(DataTypes.ENUM('IN_APP', 'SMS', 'EMAIL', 'PUSH')),
+      defaultValue: ['IN_APP'],
     },
   },
-  { timestamps: true }
+  {
+    tableName: 'notifications',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['recipient_id', 'is_read', 'created_at'],
+      },
+    ],
+  }
 );
 
-notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
-
-module.exports = mongoose.model('Notification', notificationSchema);
+module.exports = Notification;

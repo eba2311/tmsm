@@ -1,52 +1,120 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const vehicleSchema = new mongoose.Schema(
+const Vehicle = sequelize.define(
+  'Vehicle',
   {
-    plateNumber: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    plateNumber: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      trim: true,
+    },
     type: {
-      type: String,
-      enum: ['BUS', 'MINIBUS', 'BAJAJ', 'TAXI', 'CARGO'],
-      required: true,
+      type: DataTypes.ENUM('BUS', 'MINIBUS', 'BAJAJ', 'TAXI', 'CARGO'),
+      allowNull: false,
     },
-    make: { type: String, required: true },
-    model: { type: String, required: true },
-    year: { type: Number, required: true },
-    color: { type: String },
-    capacity: { type: Number, required: true },
+    make: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    model: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    year: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    color: {
+      type: DataTypes.STRING,
+    },
+    capacity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
     status: {
-      type: String,
-      enum: ['ACTIVE', 'INACTIVE', 'MAINTENANCE', 'RETIRED'],
-      default: 'ACTIVE',
+      type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'RETIRED'),
+      defaultValue: 'ACTIVE',
     },
-    fuelType: { type: String, enum: ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID'], default: 'DIESEL' },
-    assignedDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', default: null },
-    assignedRoute: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', default: null },
-    operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    insuranceExpiry: { type: Date },
-    licenseExpiry: { type: Date },
-    lastMaintenanceDate: { type: Date },
-    nextMaintenanceDate: { type: Date },
-    mileage: { type: Number, default: 0 },
-    gpsEnabled: { type: Boolean, default: false },
+    fuelType: {
+      type: DataTypes.ENUM('PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID'),
+      defaultValue: 'DIESEL',
+    },
+    assignedDriverId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
+    },
+    assignedRouteId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'routes',
+        key: 'id',
+      },
+    },
+    operatorId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    insuranceExpiry: {
+      type: DataTypes.DATE,
+    },
+    licenseExpiry: {
+      type: DataTypes.DATE,
+    },
+    lastMaintenanceDate: {
+      type: DataTypes.DATE,
+    },
+    nextMaintenanceDate: {
+      type: DataTypes.DATE,
+    },
+    mileage: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    gpsEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     currentLocation: {
-      type: { type: String, enum: ['Point'], default: 'Point' },
-      coordinates: { type: [Number], default: [37.5543, 6.0333] }, // Arba Minch coords
+      type: DataTypes.JSON,
+      defaultValue: { type: 'Point', coordinates: [37.5543, 6.0333] },
     },
-    documents: [
+    documents: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    image: {
+      type: DataTypes.STRING,
+      defaultValue: '',
+    },
+  },
+  {
+    tableName: 'vehicles',
+    timestamps: true,
+    underscored: true,
+    indexes: [
       {
-        type: { type: String },
-        url: { type: String },
-        expiryDate: { type: Date },
+        unique: true,
+        fields: ['plate_number'],
+      },
+      {
+        fields: ['status', 'type'],
       },
     ],
-    image: { type: String, default: '' },
-  },
-  { timestamps: true }
+  }
 );
 
-vehicleSchema.index({ currentLocation: '2dsphere' });
-// `unique: true` on `plateNumber` already creates an index; avoid duplicate.
-// vehicleSchema.index({ plateNumber: 1 });
-vehicleSchema.index({ status: 1, type: 1 });
-
-module.exports = mongoose.model('Vehicle', vehicleSchema);
+module.exports = Vehicle;

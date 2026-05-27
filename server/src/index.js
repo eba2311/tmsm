@@ -8,7 +8,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const { Server } = require('socket.io');
-const connectDB = require('./config/db');
+const { testConnection, syncDatabase } = require('./config/database');
 const logger = require('./config/logger');
 
 // Route imports
@@ -21,6 +21,7 @@ const driverPayrollRoutes = require('./routes/driverPayroll');
 const routeRoutes = require('./routes/routes');
 const routeOptimizationRoutes = require('./routes/routeOptimization');
 const bookingRoutes = require('./routes/bookings');
+const passengerRoutes = require('./routes/passengers');
 const paymentRoutes = require('./routes/payments');
 const reportRoutes = require('./routes/reports');
 const scheduleRoutes = require('./routes/schedules');
@@ -48,6 +49,9 @@ const { initNotificationNamespace } = require('./sockets/notifications');
 const app = express();
 const server = http.createServer(app);
 
+// Trust the Render proxy (fixes 'Too many requests' from load balancer IP)
+app.set('trust proxy', 1);
+
 // Socket.IO
 const io = new Server(server, {
   cors: {
@@ -57,11 +61,11 @@ const io = new Server(server, {
   },
 });
 
-// Rate limiting
+// Rate limiting (increased default to 10000 to prevent blocking)
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: 'Too many requests from this IP, please try again later.',
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 10000,
+  message: { success: false, message: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -88,6 +92,7 @@ app.use('/api/v1/driver-payroll', driverPayrollRoutes);
 app.use('/api/v1/routes', routeRoutes);
 app.use('/api/v1/route-optimization', routeOptimizationRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
+app.use('/api/v1/passengers', passengerRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/schedules', scheduleRoutes);
@@ -118,49 +123,24 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head><title>Dabub Connect API</title></head>
-      <body style="font-family: Arial, Helvetica, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto;">
-        <h1>🚀 Dabub Connect API</h1>
-        <p><strong>Status:</strong> ✅ Running at <code>${req.protocol}://${req.get('host')}</code></p>
-        
-        <h2>Quick Start</h2>
-        <ul>
-          <li><a href="/api-docs" style="color: #0066cc; font-weight: bold;">API Documentation (Swagger UI)</a></li>
-          <li><a href="/api/v1/health" style="color: #0066cc;">API Health Check</a></li>
-          <li><strong>Frontend Application:</strong> Open the client in your browser (served on a separate port)</li>
-        </ul>
-        
-        <h3>API Documentation</h3>
-        <p>All API endpoints use the prefix: <code>/api/v1/</code></p>
-        <p>Example: <code>POST /api/v1/auth/login</code></p>
-        
-        <hr style="margin: 2rem 0;">
-        <p style="font-size: 0.9rem; color: #666;">Arba Minch Transport Management System | © 2026</p>
-      </body>
-    </html>
-  `);
-});
+// Removed API landing page to ensure React frontend is served on the root route.
 
 // Swagger UI
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../../client/dist')));
+// Serve static files (Always fallback to React frontend)
+app.use(express.static(path.join(__dirname, '../../client/dist')));
 
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
-  });
-}
+app.get('*', (req, res, next) => {
+  // If it's an API route that wasn't found, pass to the 404 handler
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  // Otherwise, serve the React app
+  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+});
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
@@ -180,23 +160,29 @@ app.locals.notificationsNs = notificationsNs;
 // Start server
 const PORT = process.env.PORT || 4000;
 
-connectDB().then(() => {
-  server.listen(PORT, () => {
-    logger.info(`🚀 Dabub Connect API running on http://localhost:${PORT}`);
-    logger.info(`📡 Socket.IO ready`);
-  });
+// Connect to PostgreSQL and start server
+testConnection()
+  .then(async () => {
+    // Sync database (create tables if they don't exist)
+    await syncDatabase();
+    
+    server.listen(PORT, () => {
+      logger.info(`🚀 Dabub Connect API running on http://localhost:${PORT}`);
+      logger.info(`📡 Socket.IO ready`);
+    });
 
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      logger.error(`Port ${PORT} is already in use. Please use a different port.`);
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.error(`Port ${PORT} is already in use. Please use a different port.`);
+        process.exit(1);
+      }
+      logger.error(`Server error: ${err.message}`);
       process.exit(1);
-    }
-    logger.error(`Server error: ${err.message}`);
+    });
+  })
+  .catch((err) => {
+    logger.error('Failed to connect to PostgreSQL: ' + err.message);
     process.exit(1);
   });
-}).catch((err) => {
-  logger.error('Failed to connect to database: ' + err.message);
-  process.exit(1);
-});
 
 module.exports = { app, server, io };

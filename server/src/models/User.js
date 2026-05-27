@@ -1,45 +1,101 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
+const { sequelize } = require('../config/database');
 
-const userSchema = new mongoose.Schema(
+const User = sequelize.define(
+  'User',
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    phone: { type: String, trim: true },
-    password: { type: String, required: true, select: false },
-    role: {
-      type: String,
-      enum: ['SUPER_ADMIN', 'OPERATOR', 'DRIVER', 'AGENT', 'PASSENGER'],
-      default: 'PASSENGER',
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    isActive: { type: Boolean, default: true },
-    isMfaEnabled: { type: Boolean, default: false },
-    avatar: { type: String, default: '' },
-    locale: { type: String, enum: ['en', 'am'], default: 'en' },
-    refreshToken: { type: String, select: false },
-    passwordResetToken: { type: String, select: false },
-    passwordResetExpires: { type: Date, select: false },
-    lastLogin: { type: Date },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      trim: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    phone: {
+      type: DataTypes.STRING,
+      trim: true,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    role: {
+      type: DataTypes.ENUM('SUPER_ADMIN', 'OPERATOR', 'DRIVER', 'AGENT', 'PASSENGER'),
+      defaultValue: 'PASSENGER',
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    isMfaEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    avatar: {
+      type: DataTypes.STRING,
+      defaultValue: '',
+    },
+    locale: {
+      type: DataTypes.ENUM('en', 'am'),
+      defaultValue: 'en',
+    },
+    refreshToken: {
+      type: DataTypes.STRING,
+    },
+    passwordResetToken: {
+      type: DataTypes.STRING,
+    },
+    passwordResetExpires: {
+      type: DataTypes.DATE,
+    },
+    lastLogin: {
+      type: DataTypes.DATE,
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'users',
+    timestamps: true,
+    underscored: true,
+    hooks: {
+      beforeCreate: async (user) => {
+        if (user.password) {
+          const salt = await bcrypt.genSalt(12);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
+      },
+      beforeUpdate: async (user) => {
+        if (user.changed('password')) {
+          const salt = await bcrypt.genSalt(12);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
+      },
+    },
+  }
 );
 
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  const salt = await bcrypt.genSalt(12);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-userSchema.methods.comparePassword = function (candidate) {
+User.prototype.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-userSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  delete obj.password;
-  delete obj.refreshToken;
-  return obj;
+User.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  delete values.password;
+  delete values.refreshToken;
+  return values;
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = User;

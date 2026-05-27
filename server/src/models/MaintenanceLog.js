@@ -1,82 +1,155 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const maintenanceLogSchema = new mongoose.Schema(
+const MaintenanceLog = sequelize.define(
+  'MaintenanceLog',
   {
-    vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
-    type: {
-      type: String,
-      enum: ['ROUTINE', 'REPAIR', 'INSPECTION', 'EMERGENCY', 'UPGRADE'],
-      required: true,
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    description: { type: String, required: true },
-    cost: { type: Number, default: 0 }, // ETB
-    mileageAtService: { type: Number },
-    servicedBy: { type: String },
-    garage: { type: String },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date },
+    vehicleId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'vehicles',
+        key: 'id',
+      },
+    },
+    type: {
+      type: DataTypes.ENUM('ROUTINE', 'REPAIR', 'INSPECTION', 'EMERGENCY', 'UPGRADE'),
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    cost: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    mileageAtService: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    servicedBy: {
+      type: DataTypes.STRING,
+    },
+    garage: {
+      type: DataTypes.STRING,
+    },
+    startDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    endDate: {
+      type: DataTypes.DATE,
+    },
     status: {
-      type: String,
-      enum: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
-      default: 'SCHEDULED',
+      type: DataTypes.ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'),
+      defaultValue: 'SCHEDULED',
     },
     priority: {
-      type: String,
-      enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
-      default: 'MEDIUM',
+      type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH', 'URGENT'),
+      defaultValue: 'MEDIUM',
     },
-    partsReplaced: [{ name: String, cost: Number, quantity: Number }],
-    nextServiceMileage: { type: Number },
-    nextServiceDate: { type: Date },
-    attachments: [{ type: String }],
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    notes: { type: String },
-    // Scheduling fields
-    isRecurring: { type: Boolean, default: false },
+    partsReplaced: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    nextServiceMileage: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    nextServiceDate: {
+      type: DataTypes.DATE,
+    },
+    attachments: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+    },
+    createdById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    notes: {
+      type: DataTypes.TEXT,
+    },
+    isRecurring: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     recurringInterval: {
-      type: String,
-      enum: ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'MILEAGE_BASED'],
+      type: DataTypes.ENUM('DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'MILEAGE_BASED'),
     },
-    recurringIntervalValue: { type: Number }, // e.g., every 3 months or every 5000 miles
-    reminderDays: { type: Number, default: 7 }, // days before to send reminder
-    reminderSent: { type: Boolean, default: false },
-    reminderDate: { type: Date },
-    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
-    estimatedDuration: { type: Number }, // in hours
-    actualDuration: { type: Number }, // in hours
-    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    completedAt: { type: Date },
+    recurringIntervalValue: {
+      type: DataTypes.INTEGER,
+    },
+    reminderDays: {
+      type: DataTypes.INTEGER,
+      defaultValue: 7,
+    },
+    reminderSent: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    reminderDate: {
+      type: DataTypes.DATE,
+    },
+    assignedToId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
+    },
+    estimatedDuration: {
+      type: DataTypes.INTEGER,
+    },
+    actualDuration: {
+      type: DataTypes.INTEGER,
+    },
+    completedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    completedAt: {
+      type: DataTypes.DATE,
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'maintenance_logs',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['vehicle_id', 'start_date'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['next_service_date'],
+      },
+      {
+        fields: ['priority'],
+      },
+    ],
+    hooks: {
+      beforeSave: async (log) => {
+        if (log.startDate && !log.reminderDate) {
+          const reminderDate = new Date(log.startDate);
+          reminderDate.setDate(reminderDate.getDate() - log.reminderDays);
+          log.reminderDate = reminderDate;
+        }
+      },
+    },
+  }
 );
 
-maintenanceLogSchema.index({ vehicle: 1, startDate: -1 });
-maintenanceLogSchema.index({ status: 1 });
-maintenanceLogSchema.index({ nextServiceDate: 1 });
-maintenanceLogSchema.index({ priority: 1 });
-
-// Virtual for checking if maintenance is overdue
-maintenanceLogSchema.virtual('isOverdue').get(function() {
-  if (this.status === 'COMPLETED' || this.status === 'CANCELLED') return false;
-  if (!this.startDate) return false;
-  return new Date() > this.startDate;
-});
-
-// Virtual for checking if maintenance is due soon
-maintenanceLogSchema.virtual('isDueSoon').get(function() {
-  if (this.status === 'COMPLETED' || this.status === 'CANCELLED') return false;
-  if (!this.startDate) return false;
-  const daysUntil = Math.ceil((this.startDate - new Date()) / (1000 * 60 * 60 * 24));
-  return daysUntil <= this.reminderDays && daysUntil > 0;
-});
-
-// Pre-save hook to calculate reminder date
-maintenanceLogSchema.pre('save', function(next) {
-  if (this.startDate && !this.reminderDate) {
-    this.reminderDate = new Date(this.startDate);
-    this.reminderDate.setDate(this.reminderDate.getDate() - this.reminderDays);
-  }
-  next();
-});
-
-module.exports = mongoose.model('MaintenanceLog', maintenanceLogSchema);
+module.exports = MaintenanceLog;

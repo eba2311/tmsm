@@ -1,141 +1,133 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const driverPayrollSchema = new mongoose.Schema({
-  driver: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Driver',
-    required: true,
-  },
-  period: {
-    type: {
-      type: String,
-      required: true,
-      enum: ['WEEKLY', 'BI_WEEKLY', 'MONTHLY', 'QUARTERLY'],
+const DriverPayroll = sequelize.define(
+  'DriverPayroll',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    startDate: {
-      type: Date,
-      required: true,
+    driverId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
     },
-    endDate: {
-      type: Date,
-      required: true,
+    periodType: {
+      type: DataTypes.ENUM('WEEKLY', 'BI_WEEKLY', 'MONTHLY', 'QUARTERLY'),
+      allowNull: false,
+    },
+    periodStartDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    periodEndDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    baseSalary: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    bonuses: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    deductions: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    tripsCompleted: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    hoursWorked: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    revenueGenerated: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    commissionRate: {
+      type: DataTypes.DECIMAL(5, 2),
+    },
+    commissionAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    grossPay: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    netPay: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    status: {
+      type: DataTypes.ENUM('PENDING', 'PROCESSED', 'PAID', 'CANCELLED'),
+      defaultValue: 'PENDING',
+    },
+    paymentMethod: {
+      type: DataTypes.ENUM('BANK_TRANSFER', 'CASH', 'MOBILE_MONEY', 'CHECK'),
+    },
+    paymentDate: {
+      type: DataTypes.DATE,
+    },
+    transactionReference: {
+      type: DataTypes.STRING,
+    },
+    notes: {
+      type: DataTypes.STRING,
+    },
+    approvedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    approvedAt: {
+      type: DataTypes.DATE,
+    },
+    processedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    processedAt: {
+      type: DataTypes.DATE,
     },
   },
-  baseSalary: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  bonuses: [{
-    type: {
-      type: String,
-      enum: ['PERFORMANCE', 'OVERTIME', 'SAFETY', 'CUSTOMER_SATISFACTION', 'REFERRAL', 'OTHER'],
+  {
+    tableName: 'driver_payrolls',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['driver_id', 'period_start_date'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['period_start_date', 'period_end_date'],
+      },
+    ],
+    hooks: {
+      beforeSave: async (payroll) => {
+        const totalBonuses = payroll.bonuses?.reduce((sum, b) => sum + b.amount, 0) || 0;
+        const totalDeductions = payroll.deductions?.reduce((sum, d) => sum + d.amount, 0) || 0;
+        
+        payroll.grossPay = payroll.baseSalary + totalBonuses + payroll.commissionAmount;
+        payroll.netPay = payroll.grossPay - totalDeductions;
+      },
     },
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    description: {
-      type: String,
-      maxlength: 200,
-    },
-  }],
-  deductions: [{
-    type: {
-      type: String,
-      enum: ['TAX', 'INSURANCE', 'LOAN', 'PENALTY', 'ABSENCE', 'OTHER'],
-    },
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    description: {
-      type: String,
-      maxlength: 200,
-    },
-  }],
-  tripsCompleted: {
-    type: Number,
-    default: 0,
-  },
-  hoursWorked: {
-    type: Number,
-    default: 0,
-  },
-  revenueGenerated: {
-    type: Number,
-    default: 0,
-  },
-  commissionRate: {
-    type: Number,
-    min: 0,
-    max: 100,
-  },
-  commissionAmount: {
-    type: Number,
-    default: 0,
-  },
-  grossPay: {
-    type: Number,
-    min: 0,
-  },
-  netPay: {
-    type: Number,
-    min: 0,
-  },
-  status: {
-    type: String,
-    enum: ['PENDING', 'PROCESSED', 'PAID', 'CANCELLED'],
-    default: 'PENDING',
-  },
-  paymentMethod: {
-    type: String,
-    enum: ['BANK_TRANSFER', 'CASH', 'MOBILE_MONEY', 'CHECK'],
-  },
-  paymentDate: {
-    type: Date,
-  },
-  transactionReference: {
-    type: String,
-  },
-  notes: {
-    type: String,
-    maxlength: 500,
-  },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  approvedAt: {
-    type: Date,
-  },
-  processedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  processedAt: {
-    type: Date,
-  },
-}, {
-  timestamps: true,
-});
+  }
+);
 
-// Indexes for efficient querying
-driverPayrollSchema.index({ driver: 1, 'period.startDate': -1 });
-driverPayrollSchema.index({ status: 1 });
-driverPayrollSchema.index({ 'period.startDate': 1, 'period.endDate': 1 });
-
-// Pre-save hook to calculate totals
-driverPayrollSchema.pre('save', function(next) {
-  const totalBonuses = this.bonuses.reduce((sum, b) => sum + b.amount, 0);
-  const totalDeductions = this.deductions.reduce((sum, d) => sum + d.amount, 0);
-  
-  this.grossPay = this.baseSalary + totalBonuses + this.commissionAmount;
-  this.netPay = this.grossPay - totalDeductions;
-  
-  next();
-});
-
-module.exports = mongoose.model('DriverPayroll', driverPayrollSchema);
+module.exports = DriverPayroll;

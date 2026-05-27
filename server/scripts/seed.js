@@ -1,9 +1,9 @@
 /**
  * Seeds Dabub Connect (AMTMS) demo data: admin, routes, fleet, drivers, schedules.
- * Usage: MONGO_URI=mongodb://localhost:27017/amtms node scripts/seed.js
+ * Usage: DATABASE_URL=postgresql://... node scripts/seed.js
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const mongoose = require('mongoose');
+const { sequelize } = require('../src/config/database');
 const User = require('../src/models/User');
 const Route = require('../src/models/Route');
 const Vehicle = require('../src/models/Vehicle');
@@ -16,22 +16,23 @@ const Notification = require('../src/models/Notification');
 const point = (lng, lat) => ({ type: 'Point', coordinates: [lng, lat] });
 
 async function run() {
-  if (!process.env.MONGO_URI) {
-    console.error('Missing MONGO_URI');
+  if (!process.env.DATABASE_URL) {
+    console.error('Missing DATABASE_URL');
     process.exit(1);
   }
-  await mongoose.connect(process.env.MONGO_URI);
-  console.log('Connected. Clearing demo collections…');
-  await Promise.all([
-    Booking.deleteMany({}),
-    Payment.deleteMany({}),
-    Schedule.deleteMany({}),
-    Notification.deleteMany({}),
-    Driver.deleteMany({}),
-    Vehicle.deleteMany({}),
-    Route.deleteMany({}),
-    User.deleteMany({}),
-  ]);
+
+  await sequelize.authenticate();
+  console.log('Connected to PostgreSQL. Clearing demo tables…');
+
+  // Clear all tables
+  await Booking.destroy({ truncate: true, cascade: true });
+  await Payment.destroy({ truncate: true, cascade: true });
+  await Schedule.destroy({ truncate: true, cascade: true });
+  await Notification.destroy({ truncate: true, cascade: true });
+  await Driver.destroy({ truncate: true, cascade: true });
+  await Vehicle.destroy({ truncate: true, cascade: true });
+  await Route.destroy({ truncate: true, cascade: true });
+  await User.destroy({ truncate: true, cascade: true });
 
   const admin = await User.create({
     name: 'Semen Admin',
@@ -58,7 +59,7 @@ async function run() {
     role: 'PASSENGER',
   });
 
-  const routes = await Route.insertMany([
+  const routes = await Route.bulkCreate([
     {
       name: 'Arba Minch → Addis Ababa',
       nameAm: 'አርባ ምንጭ → አዲስ አበባ',
@@ -75,7 +76,7 @@ async function run() {
       status: 'ACTIVE',
       transportType: ['BUS'],
       isIntercity: true,
-      operator: admin._id,
+      operatorId: admin.id,
     },
     {
       name: 'Arba Minch → Hawassa',
@@ -90,7 +91,7 @@ async function run() {
       status: 'ACTIVE',
       transportType: ['BUS', 'MINIBUS'],
       isIntercity: true,
-      operator: admin._id,
+      operatorId: admin.id,
     },
     {
       name: 'Arba Minch → Jinka',
@@ -105,7 +106,7 @@ async function run() {
       status: 'ACTIVE',
       transportType: ['BUS', 'MINIBUS'],
       isIntercity: true,
-      operator: admin._id,
+      operatorId: admin.id,
     },
     {
       name: 'Arba Minch → Konso',
@@ -119,7 +120,7 @@ async function run() {
       status: 'ACTIVE',
       transportType: ['MINIBUS'],
       isIntercity: true,
-      operator: admin._id,
+      operatorId: admin.id,
     },
     {
       name: 'Arba Minch → Wolaita Sodo',
@@ -133,11 +134,11 @@ async function run() {
       status: 'ACTIVE',
       transportType: ['BUS', 'MINIBUS'],
       isIntercity: true,
-      operator: admin._id,
+      operatorId: admin.id,
     },
   ]);
 
-  const vehicles = await Vehicle.insertMany([
+  const vehicles = await Vehicle.bulkCreate([
     {
       plateNumber: 'AM-3-12345',
       type: 'BUS',
@@ -149,8 +150,8 @@ async function run() {
       status: 'ACTIVE',
       fuelType: 'DIESEL',
       mileage: 45200,
-      operator: admin._id,
-      assignedRoute: routes[0]._id,
+      operatorId: admin.id,
+      assignedRouteId: routes[0].id,
       currentLocation: point(37.5543, 6.0333),
       gpsEnabled: true,
     },
@@ -165,8 +166,8 @@ async function run() {
       status: 'ACTIVE',
       fuelType: 'DIESEL',
       mileage: 78300,
-      operator: admin._id,
-      assignedRoute: routes[1]._id,
+      operatorId: admin.id,
+      assignedRouteId: routes[1].id,
       currentLocation: point(37.6, 6.1),
       gpsEnabled: true,
     },
@@ -181,8 +182,8 @@ async function run() {
       status: 'ACTIVE',
       fuelType: 'DIESEL',
       mileage: 102000,
-      operator: admin._id,
-      assignedRoute: routes[2]._id,
+      operatorId: admin.id,
+      assignedRouteId: routes[2].id,
       currentLocation: point(37.5, 6.05),
       gpsEnabled: true,
     },
@@ -210,42 +211,42 @@ async function run() {
     role: 'DRIVER',
   });
 
-  const drivers = await Driver.insertMany([
+  const drivers = await Driver.bulkCreate([
     {
-      user: driverUser1._id,
+      userId: driverUser1.id,
       licenseNumber: 'DL-AM-0001',
       licenseClass: 'C',
       licenseExpiry: new Date('2028-12-31'),
       status: 'ACTIVE',
-      operator: admin._id,
-      assignedVehicle: vehicles[0]._id,
-      assignedRoute: routes[0]._id,
+      operatorId: admin.id,
+      assignedVehicleId: vehicles[0].id,
+      assignedRouteId: routes[0].id,
     },
     {
-      user: driverUser2._id,
+      userId: driverUser2.id,
       licenseNumber: 'DL-AM-0002',
       licenseClass: 'B',
       licenseExpiry: new Date('2027-06-30'),
       status: 'ACTIVE',
-      operator: admin._id,
-      assignedVehicle: vehicles[1]._id,
-      assignedRoute: routes[1]._id,
+      operatorId: admin.id,
+      assignedVehicleId: vehicles[1].id,
+      assignedRouteId: routes[1].id,
     },
     {
-      user: driverUser3._id,
+      userId: driverUser3.id,
       licenseNumber: 'DL-AM-0003',
       licenseClass: 'C',
       licenseExpiry: new Date('2029-01-15'),
       status: 'ACTIVE',
-      operator: admin._id,
-      assignedVehicle: vehicles[2]._id,
-      assignedRoute: routes[2]._id,
+      operatorId: admin.id,
+      assignedVehicleId: vehicles[2].id,
+      assignedRouteId: routes[2].id,
     },
   ]);
 
-  await Vehicle.updateOne({ _id: vehicles[0]._id }, { assignedDriver: drivers[0]._id });
-  await Vehicle.updateOne({ _id: vehicles[1]._id }, { assignedDriver: drivers[1]._id });
-  await Vehicle.updateOne({ _id: vehicles[2]._id }, { assignedDriver: drivers[2]._id });
+  await Vehicle.update({ assignedDriverId: drivers[0].id }, { where: { id: vehicles[0].id } });
+  await Vehicle.update({ assignedDriverId: drivers[1].id }, { where: { id: vehicles[1].id } });
+  await Vehicle.update({ assignedDriverId: drivers[2].id }, { where: { id: vehicles[2].id } });
 
   const mkSchedule = (route, vehicle, driver, dayOffset, hour, fare, seats, status = 'SCHEDULED') => {
     const dep = new Date();
@@ -253,9 +254,9 @@ async function run() {
     dep.setHours(hour, 0, 0, 0);
     const arr = new Date(dep.getTime() + 4 * 60 * 60 * 1000);
     return {
-      route: route._id,
-      vehicle: vehicle._id,
-      driver: driver._id,
+      routeId: route.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
       departureTime: dep,
       estimatedArrival: arr,
       status,
@@ -263,11 +264,11 @@ async function run() {
       totalSeats: seats,
       fare,
       platform: `P${Math.floor(Math.random() * 9) + 1}`,
-      operator: admin._id,
+      operatorId: admin.id,
     };
   };
 
-  await Schedule.insertMany([
+  await Schedule.bulkCreate([
     mkSchedule(routes[0], vehicles[0], drivers[0], 0, 6, 400, 45, 'BOARDING'),
     mkSchedule(routes[1], vehicles[1], drivers[1], 0, 7, 200, 14, 'SCHEDULED'),
     mkSchedule(routes[2], vehicles[2], drivers[2], 0, 8, 180, 50, 'SCHEDULED'),
@@ -276,9 +277,9 @@ async function run() {
     mkSchedule(routes[0], vehicles[0], drivers[0], 1, 14, 400, 50, 'SCHEDULED'),
   ]);
 
-  await Notification.insertMany([
+  await Notification.bulkCreate([
     {
-      recipient: admin._id,
+      recipientId: admin.id,
       type: 'SYSTEM',
       title: 'Dabub Connect ready',
       titleAm: 'ሰሜን ኮኔክት ዝግጁ ነው',
@@ -287,7 +288,7 @@ async function run() {
       channel: ['IN_APP'],
     },
     {
-      recipient: agent._id,
+      recipientId: agent.id,
       type: 'BOOKING_CONFIRMED',
       title: 'Terminal tip',
       message: 'Use Booking for counter sales; Telebirr simulates in development.',
@@ -301,7 +302,7 @@ async function run() {
   console.log('  AGENT        agent@semenconnect.et     / Agent@123456');
   console.log('  PASSENGER    passenger@semenconnect.et / Passenger@123456');
   console.log('  DRIVER       driver1@semenconnect.et    / Driver@123456');
-  await mongoose.disconnect();
+  await sequelize.close();
 }
 
 run().catch((e) => {

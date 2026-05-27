@@ -1,56 +1,66 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const vehicleLocationHistorySchema = new mongoose.Schema({
-  vehicle: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle',
-    required: true,
-    index: true,
-  },
-  location: {
-    type: {
-      type: String,
-      enum: ['Point'],
-      default: 'Point',
+const VehicleLocationHistory = sequelize.define(
+  'VehicleLocationHistory',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    coordinates: {
-      type: [Number],
-      required: true,
+    vehicleId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'vehicles',
+        key: 'id',
+      },
+    },
+    location: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: { type: 'Point', coordinates: [0, 0] },
+    },
+    speed: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    heading: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    timestamp: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+    altitude: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    accuracy: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    batteryLevel: {
+      type: DataTypes.INTEGER,
+      defaultValue: 100,
+    },
+    status: {
+      type: DataTypes.ENUM('ACTIVE', 'IDLE', 'OFFLINE', 'MAINTENANCE'),
+      defaultValue: 'ACTIVE',
     },
   },
-  speed: {
-    type: Number,
-    default: 0,
-  },
-  heading: {
-    type: Number,
-    default: 0,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-    index: true,
-  },
-  altitude: {
-    type: Number,
-    default: 0,
-  },
-  accuracy: {
-    type: Number,
-    default: 0,
-  },
-  batteryLevel: {
-    type: Number,
-    default: 100,
-  },
-  status: {
-    type: String,
-    enum: ['ACTIVE', 'IDLE', 'OFFLINE', 'MAINTENANCE'],
-    default: 'ACTIVE',
-  },
-});
+  {
+    tableName: 'vehicle_location_history',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['vehicle_id', 'timestamp'],
+      },
+    ],
+  }
+);
 
-vehicleLocationHistorySchema.index({ vehicle: 1, timestamp: -1 });
-vehicleLocationHistorySchema.index({ location: '2dsphere' });
-
-module.exports = mongoose.model('VehicleLocationHistory', vehicleLocationHistorySchema);
+module.exports = VehicleLocationHistory;

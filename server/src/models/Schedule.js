@@ -1,34 +1,109 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const scheduleSchema = new mongoose.Schema(
+const Schedule = sequelize.define(
+  'Schedule',
   {
-    route: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', required: true },
-    vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
-    driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: true },
-    departureTime: { type: Date, required: true },
-    estimatedArrival: { type: Date, required: true },
-    actualDeparture: { type: Date },
-    actualArrival: { type: Date },
-    status: {
-      type: String,
-      enum: ['SCHEDULED', 'BOARDING', 'DEPARTED', 'IN_TRANSIT', 'ARRIVED', 'CANCELLED', 'DELAYED'],
-      default: 'SCHEDULED',
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    availableSeats: { type: Number, required: true },
-    totalSeats: { type: Number, required: true },
-    fare: { type: Number, required: true }, // ETB
-    platform: { type: String },
-    isRecurring: { type: Boolean, default: false },
-    recurringDays: [{ type: String, enum: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] }],
-    notes: { type: String },
-    operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    routeId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'routes',
+        key: 'id',
+      },
+    },
+    vehicleId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'vehicles',
+        key: 'id',
+      },
+    },
+    driverId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
+    },
+    departureTime: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    estimatedArrival: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    actualDeparture: {
+      type: DataTypes.DATE,
+    },
+    actualArrival: {
+      type: DataTypes.DATE,
+    },
+    status: {
+      type: DataTypes.ENUM('SCHEDULED', 'BOARDING', 'DEPARTED', 'IN_TRANSIT', 'ARRIVED', 'CANCELLED', 'DELAYED'),
+      defaultValue: 'SCHEDULED',
+    },
+    availableSeats: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    totalSeats: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    fare: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    platform: {
+      type: DataTypes.STRING,
+    },
+    isRecurring: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    recurringDays: {
+      type: DataTypes.ARRAY(DataTypes.ENUM('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')),
+      defaultValue: [],
+    },
+    notes: {
+      type: DataTypes.STRING,
+    },
+    operatorId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'schedules',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['route_id', 'departure_time'],
+      },
+      {
+        fields: ['vehicle_id', 'departure_time'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['departure_time'],
+      },
+    ],
+  }
 );
 
-scheduleSchema.index({ route: 1, departureTime: 1 });
-scheduleSchema.index({ vehicle: 1, departureTime: 1 });
-scheduleSchema.index({ status: 1 });
-scheduleSchema.index({ departureTime: 1 });
-
-module.exports = mongoose.model('Schedule', scheduleSchema);
+module.exports = Schedule;

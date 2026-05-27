@@ -1,63 +1,63 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const geofenceSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  type: {
-    type: String,
-    enum: ['CIRCLE', 'POLYGON', 'RECTANGLE'],
-    required: true,
-  },
-  coordinates: {
-    type: [[Number]],
-    required: true,
-  },
-  radius: {
-    type: Number,
-    required: function() {
-      return this.type === 'CIRCLE';
+const Geofence = sequelize.define(
+  'Geofence',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      trim: true,
+    },
+    type: {
+      type: DataTypes.ENUM('CIRCLE', 'POLYGON', 'RECTANGLE'),
+      allowNull: false,
+    },
+    coordinates: {
+      type: DataTypes.JSON,
+      allowNull: false,
+    },
+    radius: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    alertOnEntry: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    alertOnExit: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    assignedVehicleIds: {
+      type: DataTypes.ARRAY(DataTypes.UUID),
+      defaultValue: [],
+    },
+    assignedRouteIds: {
+      type: DataTypes.ARRAY(DataTypes.UUID),
+      defaultValue: [],
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    createdById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
   },
-  alertOnEntry: {
-    type: Boolean,
-    default: true,
-  },
-  alertOnExit: {
-    type: Boolean,
-    default: true,
-  },
-  assignedVehicles: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle',
-  }],
-  assignedRoutes: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Route',
-  }],
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  {
+    tableName: 'geofences',
+    timestamps: true,
+    underscored: true,
+  }
+);
 
-geofenceSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-module.exports = mongoose.model('Geofence', geofenceSchema);
+module.exports = Geofence;

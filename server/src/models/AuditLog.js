@@ -1,83 +1,101 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const auditLogSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+const AuditLog = sequelize.define(
+  'AuditLog',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    action: {
+      type: DataTypes.ENUM(
+        'LOGIN',
+        'LOGOUT',
+        'CREATE',
+        'UPDATE',
+        'DELETE',
+        'VIEW',
+        'EXPORT',
+        'IMPORT',
+        'APPROVE',
+        'REJECT',
+        'BOOKING',
+        'PAYMENT',
+        'CANCEL',
+        'REFUND'
+      ),
+      allowNull: false,
+    },
+    resource: {
+      type: DataTypes.ENUM(
+        'USER',
+        'VEHICLE',
+        'DRIVER',
+        'ROUTE',
+        'SCHEDULE',
+        'BOOKING',
+        'PAYMENT',
+        'MAINTENANCE',
+        'REPORT',
+        'NOTIFICATION',
+        'SETTING'
+      ),
+      allowNull: false,
+    },
+    resourceId: {
+      type: DataTypes.UUID,
+    },
+    details: {
+      type: DataTypes.JSON,
+      defaultValue: {},
+    },
+    ipAddress: {
+      type: DataTypes.STRING,
+    },
+    userAgent: {
+      type: DataTypes.STRING,
+    },
+    success: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    errorMessage: {
+      type: DataTypes.TEXT,
+    },
+    timestamp: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
   },
-  action: {
-    type: String,
-    required: true,
-    enum: [
-      'LOGIN',
-      'LOGOUT',
-      'CREATE',
-      'UPDATE',
-      'DELETE',
-      'VIEW',
-      'EXPORT',
-      'IMPORT',
-      'APPROVE',
-      'REJECT',
-      'BOOKING',
-      'PAYMENT',
-      'CANCEL',
-      'REFUND',
+  {
+    tableName: 'audit_logs',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['user_id', 'timestamp'],
+      },
+      {
+        fields: ['action', 'timestamp'],
+      },
+      {
+        fields: ['resource', 'timestamp'],
+      },
+      {
+        fields: ['timestamp'],
+      },
     ],
-  },
-  resource: {
-    type: String,
-    required: true,
-    enum: [
-      'USER',
-      'VEHICLE',
-      'DRIVER',
-      'ROUTE',
-      'SCHEDULE',
-      'BOOKING',
-      'PAYMENT',
-      'MAINTENANCE',
-      'REPORT',
-      'NOTIFICATION',
-      'SETTING',
-    ],
-  },
-  resourceId: {
-    type: mongoose.Schema.Types.ObjectId,
-  },
-  details: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {},
-  },
-  ipAddress: {
-    type: String,
-  },
-  userAgent: {
-    type: String,
-  },
-  success: {
-    type: Boolean,
-    default: true,
-  },
-  errorMessage: {
-    type: String,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-}, {
-  timestamps: true,
-});
+  }
+);
 
-// Indexes for efficient querying
-auditLogSchema.index({ userId: 1, timestamp: -1 });
-auditLogSchema.index({ action: 1, timestamp: -1 });
-auditLogSchema.index({ resource: 1, timestamp: -1 });
-auditLogSchema.index({ timestamp: -1 });
-
-// TTL index - keep logs for 1 year
-auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 });
-
-module.exports = mongoose.model('AuditLog', auditLogSchema);
+module.exports = AuditLog;

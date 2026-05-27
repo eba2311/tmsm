@@ -1,124 +1,125 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const fuelRecordSchema = new mongoose.Schema({
-  vehicle: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle',
-    required: true,
-  },
-  driver: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Driver',
-  },
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
-  fuelType: {
-    type: String,
-    required: true,
-    enum: ['DIESEL', 'PETROL', 'CNG', 'LPG', 'ELECTRIC'],
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  unit: {
-    type: String,
-    required: true,
-    enum: ['LITERS', 'GALLONS', 'KWH'],
-    default: 'LITERS',
-  },
-  costPerUnit: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  totalCost: {
-    type: Number,
-    min: 0,
-  },
-  odometerReading: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  previousOdometer: {
-    type: Number,
-    min: 0,
-  },
-  distanceTraveled: {
-    type: Number,
-    min: 0,
-  },
-  fuelEfficiency: {
-    type: Number,
-    min: 0,
-  },
-  station: {
-    type: String,
-  },
-  location: {
-    type: {
-      type: String,
-      enum: ['Point'],
+const FuelRecord = sequelize.define(
+  'FuelRecord',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    coordinates: {
-      type: [Number],
+    vehicleId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'vehicles',
+        key: 'id',
+      },
+    },
+    driverId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
+    },
+    date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    fuelType: {
+      type: DataTypes.ENUM('DIESEL', 'PETROL', 'CNG', 'LPG', 'ELECTRIC'),
+      allowNull: false,
+    },
+    quantity: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    unit: {
+      type: DataTypes.ENUM('LITERS', 'GALLONS', 'KWH'),
+      defaultValue: 'LITERS',
+    },
+    costPerUnit: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    totalCost: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    odometerReading: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    previousOdometer: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    distanceTraveled: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    fuelEfficiency: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    station: {
+      type: DataTypes.STRING,
+    },
+    location: {
+      type: DataTypes.JSON,
+    },
+    paymentMethod: {
+      type: DataTypes.ENUM('CASH', 'CARD', 'CREDIT', 'COMPANY_ACCOUNT'),
+      defaultValue: 'CASH',
+    },
+    receiptNumber: {
+      type: DataTypes.STRING,
+    },
+    notes: {
+      type: DataTypes.STRING,
+    },
+    operatorId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
   },
-  paymentMethod: {
-    type: String,
-    enum: ['CASH', 'CARD', 'CREDIT', 'COMPANY_ACCOUNT'],
-    default: 'CASH',
-  },
-  receiptNumber: {
-    type: String,
-  },
-  notes: {
-    type: String,
-    maxlength: 500,
-  },
-  operator: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-}, {
-  timestamps: true,
-});
-
-// Indexes for efficient querying
-fuelRecordSchema.index({ vehicle: 1, date: -1 });
-fuelRecordSchema.index({ driver: 1, date: -1 });
-fuelRecordSchema.index({ date: -1 });
-fuelRecordSchema.index({ vehicle: 1, odometerReading: -1 });
-
-// Virtual for calculating fuel efficiency
-fuelRecordSchema.virtual('efficiency').get(function() {
-  if (this.distanceTraveled && this.quantity) {
-    return this.distanceTraveled / this.quantity; // km per liter
+  {
+    tableName: 'fuel_records',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['vehicle_id', 'date'],
+      },
+      {
+        fields: ['driver_id', 'date'],
+      },
+      {
+        fields: ['date'],
+      },
+      {
+        fields: ['vehicle_id', 'odometer_reading'],
+      },
+    ],
+    hooks: {
+      beforeSave: async (record) => {
+        if (record.previousOdometer && record.odometerReading) {
+          record.distanceTraveled = record.odometerReading - record.previousOdometer;
+        }
+        
+        if (record.distanceTraveled && record.quantity) {
+          record.fuelEfficiency = record.distanceTraveled / record.quantity;
+        }
+        
+        if (record.quantity && record.costPerUnit) {
+          record.totalCost = record.quantity * record.costPerUnit;
+        }
+      },
+    },
   }
-  return null;
-});
+);
 
-// Pre-save middleware to calculate distance traveled and efficiency
-fuelRecordSchema.pre('save', async function(next) {
-  if (this.previousOdometer && this.odometerReading) {
-    this.distanceTraveled = this.odometerReading - this.previousOdometer;
-  }
-  
-  if (this.distanceTraveled && this.quantity) {
-    this.fuelEfficiency = this.distanceTraveled / this.quantity;
-  }
-  
-  if (this.quantity && this.costPerUnit) {
-    this.totalCost = this.quantity * this.costPerUnit;
-  }
-  
-  next();
-});
-
-module.exports = mongoose.model('FuelRecord', fuelRecordSchema);
+module.exports = FuelRecord;

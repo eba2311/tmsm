@@ -1,37 +1,102 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const paymentSchema = new mongoose.Schema(
+const Payment = sequelize.define(
+  'Payment',
   {
-    booking: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    amount: { type: Number, required: true },
-    currency: { type: String, default: 'ETB' },
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    bookingId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'bookings',
+        key: 'id',
+      },
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    currency: {
+      type: DataTypes.STRING,
+      defaultValue: 'ETB',
+    },
     method: {
-      type: String,
-      enum: ['TELEBIRR', 'CBE_BIRR', 'CASH', 'CARD', 'BANK_TRANSFER'],
-      required: true,
+      type: DataTypes.ENUM('TELEBIRR', 'CBE_BIRR', 'CASH', 'CARD', 'BANK_TRANSFER'),
+      allowNull: false,
     },
     status: {
-      type: String,
-      enum: ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED', 'CANCELLED'],
-      default: 'PENDING',
+      type: DataTypes.ENUM('PENDING', 'SUCCESS', 'FAILED', 'REFUNDED', 'CANCELLED'),
+      defaultValue: 'PENDING',
     },
-    transactionId: { type: String, unique: true, sparse: true },
-    gatewayReference: { type: String },
-    gatewayResponse: { type: mongoose.Schema.Types.Mixed },
-    refundReason: { type: String },
-    refundedAt: { type: Date },
-    paidAt: { type: Date },
-    receiptUrl: { type: String },
-    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    notes: { type: String },
+    transactionId: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
+    gatewayReference: {
+      type: DataTypes.STRING,
+    },
+    gatewayResponse: {
+      type: DataTypes.JSON,
+    },
+    refundReason: {
+      type: DataTypes.STRING,
+    },
+    refundedAt: {
+      type: DataTypes.DATE,
+    },
+    paidAt: {
+      type: DataTypes.DATE,
+    },
+    receiptUrl: {
+      type: DataTypes.STRING,
+    },
+    processedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    notes: {
+      type: DataTypes.STRING,
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'payments',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['booking_id'],
+      },
+      {
+        fields: ['user_id', 'created_at'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['method'],
+      },
+      {
+        unique: true,
+        fields: ['transaction_id'],
+      },
+    ],
+  }
 );
 
-paymentSchema.index({ booking: 1 });
-paymentSchema.index({ user: 1, createdAt: -1 });
-paymentSchema.index({ status: 1 });
-paymentSchema.index({ method: 1 });
-
-module.exports = mongoose.model('Payment', paymentSchema);
+module.exports = Payment;

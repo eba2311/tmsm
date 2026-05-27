@@ -1,86 +1,94 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const driverRatingSchema = new mongoose.Schema({
-  driver: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Driver',
-    required: true,
-  },
-  booking: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking',
-  },
-  passenger: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  rating: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 5,
-  },
-  categories: {
-    punctuality: {
-      type: Number,
-      min: 1,
-      max: 5,
+const DriverRating = sequelize.define(
+  'DriverRating',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    professionalism: {
-      type: Number,
-      min: 1,
-      max: 5,
+    driverId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
     },
-    vehicleCondition: {
-      type: Number,
-      min: 1,
-      max: 5,
+    bookingId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'bookings',
+        key: 'id',
+      },
     },
-    drivingSkill: {
-      type: Number,
-      min: 1,
-      max: 5,
+    passengerId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
-    customerService: {
-      type: Number,
-      min: 1,
-      max: 5,
+    rating: {
+      type: DataTypes.DECIMAL(2, 1),
+      allowNull: false,
+      validate: {
+        min: 1,
+        max: 5,
+      },
+    },
+    categories: {
+      type: DataTypes.JSON,
+      defaultValue: {
+        punctuality: null,
+        professionalism: null,
+        vehicleCondition: null,
+        drivingSkill: null,
+        customerService: null,
+      },
+    },
+    comment: {
+      type: DataTypes.STRING,
+    },
+    isAnonymous: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    response: {
+      type: DataTypes.STRING,
+    },
+    respondedAt: {
+      type: DataTypes.DATE,
+    },
+    respondedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
   },
-  comment: {
-    type: String,
-    maxlength: 500,
-  },
-  isAnonymous: {
-    type: Boolean,
-    default: false,
-  },
-  response: {
-    type: String,
-    maxlength: 500,
-  },
-  respondedAt: {
-    type: Date,
-  },
-  respondedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-}, {
-  timestamps: true,
-});
+  {
+    tableName: 'driver_ratings',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['driver_id', 'created_at'],
+      },
+      {
+        fields: ['booking_id'],
+      },
+      {
+        fields: ['passenger_id'],
+      },
+      {
+        fields: ['rating'],
+      },
+    ],
+  }
+);
 
-// Indexes for efficient querying
-driverRatingSchema.index({ driver: 1, createdAt: -1 });
-driverRatingSchema.index({ booking: 1 });
-driverRatingSchema.index({ passenger: 1 });
-driverRatingSchema.index({ rating: -1 });
-
-// Virtual for calculating average of categories
-driverRatingSchema.virtual('categoryAverage').get(function() {
-  const categories = Object.values(this.categories).filter(v => v !== undefined);
-  if (categories.length === 0) return null;
-  return categories.reduce((sum, val) => sum + val, 0) / categories.length;
-});
-
-module.exports = mongoose.model('DriverRating', driverRatingSchema);
+module.exports = DriverRating;

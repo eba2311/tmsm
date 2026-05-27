@@ -1,101 +1,122 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const routeOptimizationSchema = new mongoose.Schema({
-  route: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Route',
-    required: true,
-  },
-  vehicle: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle',
-    required: true,
-  },
-  driver: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Driver',
-  },
-  schedule: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Schedule',
-  },
-  originalStops: [{
-    location: {
-      type: { type: String, enum: ['Point'], required: true },
-      coordinates: { type: [Number], required: true },
+const RouteOptimization = sequelize.define(
+  'RouteOptimization',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
     },
-    name: String,
-    address: String,
-    estimatedArrival: Date,
-    estimatedDeparture: Date,
-    passengerCount: Number,
-  }],
-  optimizedStops: [{
-    location: {
-      type: { type: String, enum: ['Point'], required: true },
-      coordinates: { type: [Number], required: true },
+    routeId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'routes',
+        key: 'id',
+      },
     },
-    name: String,
-    address: String,
-    estimatedArrival: Date,
-    estimatedDeparture: Date,
-    passengerCount: Number,
-    sequence: Number,
-  }],
-  optimizationMetrics: {
-    originalDistance: Number, // in km
-    optimizedDistance: Number, // in km
-    originalDuration: Number, // in minutes
-    optimizedDuration: Number, // in minutes
-    distanceSaved: Number, // in km
-    timeSaved: Number, // in minutes
-    fuelSaved: Number, // in liters
-    costSaved: Number, // in ETB
-    efficiencyImprovement: Number, // percentage
-  },
-  constraints: {
-    maxStops: Number,
-    timeWindow: {
-      start: Date,
-      end: Date,
+    vehicleId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'vehicles',
+        key: 'id',
+      },
     },
-    maxDuration: Number, // in minutes
-    maxDistance: Number, // in km
-    avoidTolls: Boolean,
-    avoidHighways: Boolean,
-    preferredRoutes: [String],
+    driverId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'drivers',
+        key: 'id',
+      },
+    },
+    scheduleId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'schedules',
+        key: 'id',
+      },
+    },
+    originalStops: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    optimizedStops: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    optimizationMetrics: {
+      type: DataTypes.JSON,
+      defaultValue: {
+        originalDistance: null,
+        optimizedDistance: null,
+        originalDuration: null,
+        optimizedDuration: null,
+        distanceSaved: null,
+        timeSaved: null,
+        fuelSaved: null,
+        costSaved: null,
+        efficiencyImprovement: null,
+      },
+    },
+    constraints: {
+      type: DataTypes.JSON,
+      defaultValue: {
+        maxStops: null,
+        timeWindow: {
+          start: null,
+          end: null,
+        },
+        maxDuration: null,
+        maxDistance: null,
+        avoidTolls: false,
+        avoidHighways: false,
+        preferredRoutes: [],
+      },
+    },
+    optimizationMethod: {
+      type: DataTypes.ENUM('NEAREST_NEIGHBOR', 'GENETIC_ALGORITHM', 'SIMULATED_ANNEALING', 'GREEDY', 'CUSTOM'),
+      defaultValue: 'NEAREST_NEIGHBOR',
+    },
+    status: {
+      type: DataTypes.ENUM('PENDING', 'OPTIMIZING', 'COMPLETED', 'FAILED'),
+      defaultValue: 'PENDING',
+    },
+    optimizationDate: {
+      type: DataTypes.DATE,
+    },
+    optimizedById: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    notes: {
+      type: DataTypes.TEXT,
+    },
   },
-  optimizationMethod: {
-    type: String,
-    enum: ['NEAREST_NEIGHBOR', 'GENETIC_ALGORITHM', 'SIMULATED_ANNEALING', 'GREEDY', 'CUSTOM'],
-    default: 'NEAREST_NEIGHBOR',
-  },
-  status: {
-    type: String,
-    enum: ['PENDING', 'OPTIMIZING', 'COMPLETED', 'FAILED'],
-    default: 'PENDING',
-  },
-  optimizationDate: Date,
-  optimizedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  notes: String,
-}, {
-  timestamps: true,
-});
+  {
+    tableName: 'route_optimizations',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        fields: ['route_id', 'optimization_date'],
+      },
+      {
+        fields: ['vehicle_id', 'optimization_date'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['optimization_date'],
+      },
+    ],
+  }
+);
 
-// Indexes for efficient querying
-routeOptimizationSchema.index({ route: 1, optimizationDate: -1 });
-routeOptimizationSchema.index({ vehicle: 1, optimizationDate: -1 });
-routeOptimizationSchema.index({ status: 1 });
-routeOptimizationSchema.index({ optimizationDate: -1 });
-
-// Virtual for checking if optimization is recent
-routeOptimizationSchema.virtual('isRecent').get(function() {
-  if (!this.optimizationDate) return false;
-  const hoursSinceOptimization = (Date.now() - this.optimizationDate) / (1000 * 60 * 60);
-  return hoursSinceOptimization < 24;
-});
-
-module.exports = mongoose.model('RouteOptimization', routeOptimizationSchema);
+module.exports = RouteOptimization;

@@ -1,48 +1,142 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const driverSchema = new mongoose.Schema(
+const Driver = sequelize.define(
+  'Driver',
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-    licenseNumber: { type: String, required: true, unique: true, uppercase: true },
-    licenseClass: { type: String, enum: ['A', 'B', 'C', 'D', 'E', 'F'], required: true },
-    licenseExpiry: { type: Date, required: true },
-    nationalId: { type: String, unique: true, sparse: true },
-    dateOfBirth: { type: Date },
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      unique: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    licenseNumber: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    licenseClass: {
+      type: DataTypes.ENUM('A', 'B', 'C', 'D', 'E', 'F'),
+      allowNull: false,
+    },
+    licenseExpiry: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    nationalId: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
+    dateOfBirth: {
+      type: DataTypes.DATE,
+    },
     address: {
-      woreda: { type: String },
-      kebele: { type: String },
-      city: { type: String, default: 'Arba Minch' },
-      region: { type: String, default: 'SNNPR' },
+      type: DataTypes.JSON,
+      defaultValue: {
+        woreda: null,
+        kebele: null,
+        city: 'Arba Minch',
+        region: 'SNNPR',
+      },
     },
-    experience: { type: Number, default: 0 }, // years
+    experience: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
     status: {
-      type: String,
-      enum: ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED'],
-      default: 'ACTIVE',
+      type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED'),
+      defaultValue: 'ACTIVE',
     },
-    assignedVehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', default: null },
-    assignedRoute: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', default: null },
-    operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedVehicleId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'vehicles',
+        key: 'id',
+      },
+    },
+    assignedRouteId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'routes',
+        key: 'id',
+      },
+    },
+    operatorId: {
+      type: DataTypes.UUID,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
     emergencyContact: {
-      name: { type: String },
-      phone: { type: String },
-      relation: { type: String },
+      type: DataTypes.JSON,
+      defaultValue: {
+        name: null,
+        phone: null,
+        relation: null,
+      },
     },
-    salary: { type: Number, default: 0 }, // in ETB
-    rating: { type: Number, default: 5, min: 1, max: 5 },
-    totalTrips: { type: Number, default: 0 },
-    totalDistance: { type: Number, default: 0 }, // km
-    bankAccount: { type: String },
-    bankName: { type: String },
-    photo: { type: String, default: '' },
-    joiningDate: { type: Date, default: Date.now },
+    salary: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    rating: {
+      type: DataTypes.DECIMAL(2, 1),
+      defaultValue: 5,
+      validate: {
+        min: 1,
+        max: 5,
+      },
+    },
+    totalTrips: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    totalDistance: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+    bankAccount: {
+      type: DataTypes.STRING,
+    },
+    bankName: {
+      type: DataTypes.STRING,
+    },
+    photo: {
+      type: DataTypes.STRING,
+      defaultValue: '',
+    },
+    joiningDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'drivers',
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ['license_number'],
+      },
+      {
+        unique: true,
+        fields: ['user_id'],
+      },
+      {
+        fields: ['status'],
+      },
+    ],
+  }
 );
 
-// `unique: true` on `licenseNumber` already creates an index; avoid duplicate.
-// Keep only the non-unique index for status.
-// driverSchema.index({ licenseNumber: 1 });
-driverSchema.index({ status: 1 });
-
-module.exports = mongoose.model('Driver', driverSchema);
+module.exports = Driver;
