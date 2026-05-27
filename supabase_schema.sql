@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS routes (
     base_fare NUMERIC(10,2) NOT NULL,
 
     status route_status DEFAULT 'ACTIVE',
-    transport_type transport_type[] DEFAULT ARRAY['BUS']::transport_type[],
+    transport_type TEXT[] DEFAULT ARRAY['BUS']::TEXT[],
     is_intercity BOOLEAN DEFAULT FALSE,
 
     operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
