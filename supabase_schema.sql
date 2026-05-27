@@ -80,6 +80,16 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
+    CREATE TYPE route_status AS ENUM (
+        'ACTIVE',
+        'INACTIVE',
+        'SEASONAL'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
     CREATE TYPE schedule_status AS ENUM (
         'SCHEDULED',
         'BOARDING',
