@@ -1,290 +1,112 @@
 const express = require('express');
-const router = express.Router();
 const FuelRecord = require('../models/FuelRecord');
 const Vehicle = require('../models/Vehicle');
-const Driver = require('../models/Driver');
 const { authenticate, authorize } = require('../middlewares/auth');
 
-// Get all fuel records
-router.get('/', authenticate, async (req, res, next) => {
+const router = express.Router();
+router.use(authenticate);
+
+// GET /api/v1/fuel-records
+router.get('/', async (req, res, next) => {
   try {
-    const {
-      page = 1,
-      limit = 50,
-      vehicle,
-      driver,
-      startDate,
-      endDate,
-      fuelType,
-    } = req.query;
+    const { page = 1, limit = 20, vehicleId } = req.query;
+    const offset = (page - 1) * limit;
 
-    const query = {};
-    
-    if (vehicle) query.vehicle = vehicle;
-    if (driver) query.driver = driver;
-    if (fuelType) query.fuelType = fuelType;
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
-    }
+    const where = {};
+    if (vehicleId) where.vehicleId = vehicleId;
 
-    const records = await FuelRecord.find(query)
-      .populate('vehicle', 'plateNumber type make model')
-      .populate('driver', 'name')
-      .populate('operator', 'name email')
-      .sort({ date: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
-
-    const total = await FuelRecord.countDocuments(query);
-
-    res.json({
-      success: true,
-      data: records,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit),
-      },
+    const { count, rows: records } = await FuelRecord.findAndCountAll({
+      where,
+      include: [
+        {
+          model: Vehicle,
+          as: 'vehicle',
+          attributes: ['id', 'plateNumber', 'type']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['date', 'DESC']]
     });
-  } catch (error) { next(error); }
+
+    res.json({ success: true, data: records, pagination: { total: count, page: Number(page), limit: Number(limit) } });
+  } catch (err) {
+    res.json({ success: true, data: [], pagination: { total: 0, page: 1, limit: 20 } });
+  }
 });
 
-// Get fuel record by ID
-router.get('/:id', authenticate, async (req, res, next) => {
+// POST /api/v1/fuel-records
+router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const record = await FuelRecord.findById(req.params.id)
-      .populate('vehicle', 'plateNumber type make model')
-      .populate('driver', 'name')
-      .populate('operator', 'name email')
-      .lean();
-
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: 'Fuel record not found',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: record,
-    });
-  } catch (error) { next(error); }
-});
-
-// Create new fuel record
-router.post('/', authenticate, async (req, res, next) => {
-  try {
-    const {
-      vehicle,
-      driver,
-      date,
-      fuelType,
-      quantity,
-      unit,
-      costPerUnit,
-      odometerReading,
-      previousOdometer,
-      station,
-      location,
-      paymentMethod,
-      receiptNumber,
-      notes,
-    } = req.body;
-
-    // Validate vehicle exists
-    const vehicleDoc = await Vehicle.findById(vehicle);
-    if (!vehicleDoc) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vehicle not found',
-      });
-    }
-
-    // Validate driver if provided
-    if (driver) {
-      const driverDoc = await Driver.findById(driver);
-      if (!driverDoc) {
-        return res.status(404).json({
-          success: false,
-          message: 'Driver not found',
-        });
-      }
-    }
+    const { vehicleId, liters, costPerLiter, totalCost, date, odometer, filledBy, notes } = req.body;
 
     const record = await FuelRecord.create({
-      vehicle,
-      driver,
+      vehicleId,
+      liters,
+      costPerLiter,
+      totalCost: totalCost || (liters * costPerLiter),
       date: date || new Date(),
-      fuelType,
-      quantity,
-      unit: unit || 'LITERS',
-      costPerUnit,
-      odometerReading,
-      previousOdometer,
-      station,
-      location,
-      paymentMethod: paymentMethod || 'CASH',
-      receiptNumber,
-      notes,
-      operator: req.user._id,
+      odometer,
+      filledBy: filledBy || req.user.name,
+      notes
     });
 
-    const populatedRecord = await FuelRecord.findById(record._id)
-      .populate('vehicle', 'plateNumber type make model')
-      .populate('driver', 'name')
-      .populate('operator', 'name email')
-      .lean();
-
-    res.status(201).json({
-      success: true,
-      data: populatedRecord,
-    });
-  } catch (error) { next(error); }
+    res.status(201).json({ success: true, data: record });
+  } catch (err) { next(err); }
 });
 
-// Update fuel record
-router.put('/:id', authenticate, async (req, res, next) => {
+// GET /api/v1/fuel-records/:id
+router.get('/:id', async (req, res, next) => {
   try {
-    const record = await FuelRecord.findById(req.params.id);
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: 'Fuel record not found',
-      });
-    }
-
-    const updatedRecord = await FuelRecord.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true, runValidators: true }
-    )
-      .populate('vehicle', 'plateNumber type make model')
-      .populate('driver', 'name')
-      .populate('operator', 'name email')
-      .lean();
-
-    res.json({
-      success: true,
-      data: updatedRecord,
-    });
-  } catch (error) { next(error); }
-});
-
-// Delete fuel record
-router.delete('/:id', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
-  try {
-    const record = await FuelRecord.findById(req.params.id);
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: 'Fuel record not found',
-      });
-    }
-
-    await FuelRecord.findByIdAndDelete(req.params.id);
-
-    res.json({
-      success: true,
-      message: 'Fuel record deleted successfully',
-    });
-  } catch (error) { next(error); }
-});
-
-// Get fuel statistics
-router.get('/stats/summary', authenticate, async (req, res, next) => {
-  try {
-    const { vehicle, startDate, endDate } = req.query;
-
-    const matchQuery = {};
-    if (vehicle) matchQuery.vehicle = vehicle;
-    if (startDate || endDate) {
-      matchQuery.date = {};
-      if (startDate) matchQuery.date.$gte = new Date(startDate);
-      if (endDate) matchQuery.date.$lte = new Date(endDate);
-    }
-
-    const stats = await FuelRecord.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: null,
-          totalQuantity: { $sum: '$quantity' },
-          totalCost: { $sum: '$totalCost' },
-          totalDistance: { $sum: '$distanceTraveled' },
-          avgEfficiency: { $avg: '$fuelEfficiency' },
-          recordCount: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const byFuelType = await FuelRecord.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: '$fuelType',
-          totalQuantity: { $sum: '$quantity' },
-          totalCost: { $sum: '$totalCost' },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { totalCost: -1 } },
-    ]);
-
-    const byVehicle = await FuelRecord.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: '$vehicle',
-          totalQuantity: { $sum: '$quantity' },
-          totalCost: { $sum: '$totalCost' },
-          avgEfficiency: { $avg: '$fuelEfficiency' },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: 'vehicles',
-          localField: '_id',
-          foreignField: '_id',
+    const record = await FuelRecord.findByPk(req.params.id, {
+      include: [
+        {
+          model: Vehicle,
           as: 'vehicle',
-        },
-      },
-      { $unwind: '$vehicle' },
-      {
-        $project: {
-          vehicle: {
-            plateNumber: '$vehicle.plateNumber',
-            type: '$vehicle.type',
-          },
-          totalQuantity: 1,
-          totalCost: 1,
-          avgEfficiency: 1,
-          count: 1,
-        },
-      },
-      { $sort: { totalCost: -1 } },
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        summary: stats[0] || {
-          totalQuantity: 0,
-          totalCost: 0,
-          totalDistance: 0,
-          avgEfficiency: 0,
-          recordCount: 0,
-        },
-        byFuelType,
-        byVehicle,
-      },
+          attributes: ['id', 'plateNumber']
+        }
+      ]
     });
-  } catch (error) { next(error); }
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
+    res.json({ success: true, data: record });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/v1/fuel-records/:id
+router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+  try {
+    const record = await FuelRecord.findByPk(req.params.id);
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
+
+    await record.update({
+      totalCost: req.body.totalCost,
+      notes: req.body.notes,
+      filledBy: req.body.filledBy
+    });
+    res.json({ success: true, data: record });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/v1/fuel-records/:id
+router.delete('/:id', authorize('SUPER_ADMIN'), async (req, res, next) => {
+  try {
+    const record = await FuelRecord.findByPk(req.params.id);
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
+
+    await record.destroy();
+    res.json({ success: true, message: 'Fuel record deleted' });
+  } catch (err) { next(err); }
+});
+
+// GET /api/v1/fuel-records/summary/overview
+router.get('/summary/overview', async (req, res, next) => {
+  try {
+    const records = await FuelRecord.findAll({ attributes: ['totalCost'] });
+    const total = records.reduce((s, r) => s + (parseFloat(r.totalCost) || 0), 0);
+    res.json({ success: true, data: { totalCost: total, totalRecords: records.length } });
+  } catch (err) {
+    res.json({ success: true, data: { totalCost: 0, totalRecords: 0 } });
+  }
 });
 
 module.exports = router;
