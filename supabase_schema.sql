@@ -94,6 +94,41 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
+    CREATE TYPE booking_status AS ENUM (
+        'PENDING',
+        'CONFIRMED',
+        'CANCELLED',
+        'USED',
+        'EXPIRED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE payment_status AS ENUM (
+        'UNPAID',
+        'PAID',
+        'REFUNDED',
+        'PARTIALLY_PAID'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE payment_method AS ENUM (
+        'TELEBIRR',
+        'CBE_BIRR',
+        'CASH',
+        'CARD',
+        'BANK_TRANSFER'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
     CREATE TYPE optimization_status AS ENUM (
         'PENDING',
         'OPTIMIZING',
@@ -240,17 +275,22 @@ CREATE TABLE IF NOT EXISTS vehicles (
 
     next_maintenance_date TIMESTAMP WITH TIME ZONE,
 
-    mileage NUMERIC(10,2) DEFAULT 0,
+    mileage INTEGER DEFAULT 0,
 
     gps_enabled BOOLEAN DEFAULT FALSE,
 
-    current_location geometry(Point, 4326),
+    current_location JSONB DEFAULT '{"type":"Point","coordinates":[37.5543,6.0333]}',
+
+    documents JSONB DEFAULT '[]',
 
     image TEXT DEFAULT '',
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX vehicles_plate_number ON vehicles(plate_number);
+CREATE INDEX vehicles_status_type ON vehicles(status, type);
 
 -- ==========================================
 -- 8. VEHICLE LOCATION HISTORY
@@ -311,6 +351,8 @@ CREATE TABLE IF NOT EXISTS schedules (
 
     is_recurring BOOLEAN DEFAULT FALSE,
 
+    recurring_days TEXT[],
+
     notes TEXT,
 
     operator_id UUID REFERENCES users(id),
@@ -319,6 +361,11 @@ CREATE TABLE IF NOT EXISTS schedules (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE INDEX schedules_route_departure ON schedules(route_id, departure_time);
+CREATE INDEX schedules_vehicle_departure ON schedules(vehicle_id, departure_time);
+CREATE INDEX schedules_status ON schedules(status);
+CREATE INDEX schedules_departure_time ON schedules(departure_time);
+
 -- ==========================================
 -- 10. BOOKINGS TABLE
 -- ==========================================
@@ -326,21 +373,52 @@ CREATE TABLE IF NOT EXISTS schedules (
 CREATE TABLE IF NOT EXISTS bookings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
-    schedule_id UUID REFERENCES schedules(id) ON DELETE CASCADE,
+    booking_ref VARCHAR(50) UNIQUE NOT NULL,
 
-    passenger_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    schedule_id UUID REFERENCES schedules(id) ON DELETE CASCADE NOT NULL,
 
-    seat_number VARCHAR(10),
+    passenger_id UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL,
 
-    amount_paid NUMERIC(10,2),
+    agent_id UUID REFERENCES users(id) ON DELETE SET NULL,
 
-    status VARCHAR(50) DEFAULT 'CONFIRMED',
+    passengers JSONB DEFAULT '[]',
 
-    booking_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_amount NUMERIC(10,2) NOT NULL,
+
+    currency VARCHAR(10) DEFAULT 'ETB',
+
+    status booking_status DEFAULT 'PENDING',
+
+    payment_status payment_status DEFAULT 'UNPAID',
+
+    payment_method payment_method,
+
+    qr_code TEXT,
+
+    qr_code_data TEXT,
+
+    boarding_point VARCHAR(255),
+
+    dropping_point VARCHAR(255),
+
+    checked_in BOOLEAN DEFAULT FALSE,
+
+    checked_in_at TIMESTAMP WITH TIME ZONE,
+
+    cancellation_reason TEXT,
+
+    refund_amount NUMERIC(10,2) DEFAULT 0,
+
+    notes TEXT,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX bookings_booking_ref ON bookings(booking_ref);
+CREATE INDEX bookings_passenger_created ON bookings(passenger_id, created_at);
+CREATE INDEX bookings_schedule ON bookings(schedule_id);
+CREATE INDEX bookings_status_payment ON bookings(status, payment_status);
 
 -- ==========================================
 -- 11. ROUTE OPTIMIZATIONS
