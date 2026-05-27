@@ -871,14 +871,8 @@ CREATE TABLE IF NOT EXISTS report_schedules (
 CREATE INDEX IF NOT EXISTS idx_vehicle_location_timestamp
 ON vehicle_location_history(vehicle_id, timestamp DESC);
 
-CREATE INDEX IF NOT EXISTS idx_routes_start_coords
-ON routes USING GIST(start_coordinates);
-
-CREATE INDEX IF NOT EXISTS idx_routes_end_coords
-ON routes USING GIST(end_coordinates);
-
 CREATE INDEX IF NOT EXISTS idx_vehicle_current_location
-ON vehicles USING GIST(current_location);
+ON vehicles USING GIN(current_location);
 
 CREATE INDEX IF NOT EXISTS idx_payments_booking
 ON payments(booking_id);
