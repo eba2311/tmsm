@@ -28,7 +28,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- ==========================================
 
 DO $$ BEGIN
-    CREATE TYPE user_role AS ENUM (
+    CREATE TYPE enum_users_role AS ENUM (
         'SUPER_ADMIN',
         'OPERATOR',
         'DRIVER',
@@ -40,9 +40,27 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE user_locale AS ENUM ('en', 'am');
+    CREATE TYPE enum_users_locale AS ENUM ('en', 'am');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Migration: Rename old user_role to enum_users_role if it exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(50);
+        DROP TYPE user_role;
+    END IF;
+END $$;
+
+-- Migration: Rename old user_locale to enum_users_locale if it exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_locale') THEN
+        ALTER TABLE users ALTER COLUMN locale TYPE VARCHAR(10);
+        DROP TYPE user_locale;
+    END IF;
 END $$;
 
 DO $$ BEGIN
@@ -196,14 +214,14 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(50),
     password VARCHAR(255) NOT NULL,
 
-    role user_role DEFAULT 'PASSENGER',
+    role enum_users_role DEFAULT 'PASSENGER',
 
     is_active BOOLEAN DEFAULT TRUE,
     is_mfa_enabled BOOLEAN DEFAULT FALSE,
 
     avatar TEXT DEFAULT '',
 
-    locale user_locale DEFAULT 'en',
+    locale enum_users_locale DEFAULT 'en',
 
     refresh_token TEXT,
     password_reset_token TEXT,
@@ -745,23 +763,120 @@ END $$;
 -- 13. AUDIT LOGS
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE audit_log_action AS ENUM (
+        'LOGIN',
+        'LOGOUT',
+        'CREATE',
+        'UPDATE',
+        'DELETE',
+        'VIEW',
+        'EXPORT',
+        'IMPORT',
+        'APPROVE',
+        'REJECT',
+        'BOOKING',
+        'PAYMENT',
+        'CANCEL',
+        'REFUND'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE audit_log_resource AS ENUM (
+        'USER',
+        'VEHICLE',
+        'DRIVER',
+        'ROUTE',
+        'SCHEDULE',
+        'BOOKING',
+        'PAYMENT',
+        'MAINTENANCE',
+        'REPORT',
+        'NOTIFICATION',
+        'SETTING'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
 
-    action VARCHAR(255) NOT NULL,
+    action audit_log_action NOT NULL,
 
-    entity VARCHAR(255),
+    resource audit_log_resource NOT NULL,
 
-    entity_id UUID,
+    resource_id UUID,
 
-    details JSONB,
+    details JSONB DEFAULT '{}',
 
     ip_address VARCHAR(45),
 
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    user_agent VARCHAR(500),
+
+    success BOOLEAN DEFAULT TRUE,
+
+    error_message TEXT,
+
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS audit_logs_user_id_timestamp ON audit_logs(user_id, timestamp);
+CREATE INDEX IF NOT EXISTS audit_logs_action_timestamp ON audit_logs(action, timestamp);
+CREATE INDEX IF NOT EXISTS audit_logs_resource_timestamp ON audit_logs(resource, timestamp);
+CREATE INDEX IF NOT EXISTS audit_logs_timestamp ON audit_logs(timestamp);
+
+-- Migration: Add missing columns to existing audit_logs table
+DO $$
+BEGIN
+    -- Rename entity to resource if it exists
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'entity') THEN
+        ALTER TABLE audit_logs RENAME COLUMN entity TO resource;
+    END IF;
+
+    -- Rename entity_id to resource_id if it exists
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'entity_id') THEN
+        ALTER TABLE audit_logs RENAME COLUMN entity_id TO resource_id;
+    END IF;
+
+    -- Add action column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'action') THEN
+        ALTER TABLE audit_logs ADD COLUMN action audit_log_action NOT NULL DEFAULT 'VIEW';
+    END IF;
+
+    -- Add resource column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'resource') THEN
+        ALTER TABLE audit_logs ADD COLUMN resource audit_log_resource NOT NULL DEFAULT 'SETTING';
+    END IF;
+
+    -- Add user_agent column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'user_agent') THEN
+        ALTER TABLE audit_logs ADD COLUMN user_agent VARCHAR(500);
+    END IF;
+
+    -- Add success column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'success') THEN
+        ALTER TABLE audit_logs ADD COLUMN success BOOLEAN DEFAULT TRUE;
+    END IF;
+
+    -- Add error_message column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'error_message') THEN
+        ALTER TABLE audit_logs ADD COLUMN error_message TEXT;
+    END IF;
+
+    -- Add timestamp column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'timestamp') THEN
+        ALTER TABLE audit_logs ADD COLUMN timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+    END IF;
+END $$;
 
 -- ==========================================
 -- 14. NOTIFICATIONS TABLE
