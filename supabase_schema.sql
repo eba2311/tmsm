@@ -767,20 +767,106 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- 14. NOTIFICATIONS TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE notification_type AS ENUM (
+        'BOOKING_CONFIRMED',
+        'BOOKING_CANCELLED',
+        'PAYMENT_SUCCESS',
+        'PAYMENT_FAILED',
+        'SCHEDULE_DELAY',
+        'SCHEDULE_CANCELLED',
+        'VEHICLE_MAINTENANCE',
+        'DRIVER_ALERT',
+        'SYSTEM',
+        'PROMOTION'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE notification_channel AS ENUM (
+        'IN_APP',
+        'SMS',
+        'EMAIL',
+        'PUSH'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
 
-    type VARCHAR(50) NOT NULL,
+    type notification_type NOT NULL,
+
+    title VARCHAR(255) NOT NULL,
+
+    title_am VARCHAR(255),
 
     message TEXT NOT NULL,
 
+    message_am TEXT,
+
     is_read BOOLEAN DEFAULT FALSE,
+
+    read_at TIMESTAMP WITH TIME ZONE,
+
+    data JSONB,
+
+    channel notification_channel[] DEFAULT ARRAY['IN_APP']::notification_channel[],
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS notifications_recipient_id_is_read_created_at ON notifications(recipient_id, is_read, created_at);
+
+-- Migration: Rename user_id to recipient_id and add missing columns
+DO $$
+BEGIN
+    -- Rename user_id to recipient_id if it exists
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'user_id') THEN
+        ALTER TABLE notifications RENAME COLUMN user_id TO recipient_id;
+    END IF;
+
+    -- Add type column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'type') THEN
+        ALTER TABLE notifications ADD COLUMN type notification_type NOT NULL DEFAULT 'SYSTEM';
+    END IF;
+
+    -- Add title column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'title') THEN
+        ALTER TABLE notifications ADD COLUMN title VARCHAR(255) NOT NULL DEFAULT '';
+    END IF;
+
+    -- Add title_am column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'title_am') THEN
+        ALTER TABLE notifications ADD COLUMN title_am VARCHAR(255);
+    END IF;
+
+    -- Add message_am column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'message_am') THEN
+        ALTER TABLE notifications ADD COLUMN message_am TEXT;
+    END IF;
+
+    -- Add read_at column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'read_at') THEN
+        ALTER TABLE notifications ADD COLUMN read_at TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    -- Add data column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'data') THEN
+        ALTER TABLE notifications ADD COLUMN data JSONB;
+    END IF;
+
+    -- Add channel column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'channel') THEN
+        ALTER TABLE notifications ADD COLUMN channel notification_channel[] DEFAULT ARRAY['IN_APP']::notification_channel[];
+    END IF;
+END $$;
 
 -- ==========================================
 -- 15. PAYMENTS TABLE
