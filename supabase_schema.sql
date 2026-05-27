@@ -63,8 +63,68 @@ BEGIN
     END IF;
 END $$;
 
+-- Migration: Drop old ENUM types and rename to match Sequelize convention
+DO $$
+BEGIN
+    -- Drop old vehicle types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_type') THEN
+        ALTER TABLE vehicles ALTER COLUMN type TYPE VARCHAR(50);
+        DROP TYPE vehicle_type;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_status') THEN
+        ALTER TABLE vehicles ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE vehicle_status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_type') THEN
+        ALTER TABLE vehicles ALTER COLUMN fuel_type TYPE VARCHAR(50);
+        DROP TYPE fuel_type;
+    END IF;
+
+    -- Drop old route types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'route_status') THEN
+        ALTER TABLE routes ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE route_status;
+    END IF;
+
+    -- Drop old schedule types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'schedule_status') THEN
+        ALTER TABLE schedules ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE schedule_status;
+    END IF;
+
+    -- Drop old booking types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status') THEN
+        ALTER TABLE bookings ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE booking_status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
+        ALTER TABLE bookings ALTER COLUMN payment_status TYPE VARCHAR(50);
+        DROP TYPE payment_status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_method') THEN
+        ALTER TABLE bookings ALTER COLUMN payment_method TYPE VARCHAR(50);
+        DROP TYPE payment_method;
+    END IF;
+
+    -- Drop old optimization types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'optimization_status') THEN
+        ALTER TABLE route_optimizations ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE optimization_status;
+    END IF;
+
+    -- Drop old location status
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'location_status') THEN
+        ALTER TABLE vehicle_location_history ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE location_status;
+    END IF;
+END $$;
+
 DO $$ BEGIN
-    CREATE TYPE vehicle_type AS ENUM (
+    CREATE TYPE enum_vehicles_type AS ENUM (
         'BUS',
         'MINIBUS',
         'BAJAJ',
@@ -76,7 +136,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE vehicle_status AS ENUM (
+    CREATE TYPE enum_vehicles_status AS ENUM (
         'ACTIVE',
         'INACTIVE',
         'MAINTENANCE',
@@ -87,7 +147,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE fuel_type AS ENUM (
+    CREATE TYPE enum_vehicles_fuel_type AS ENUM (
         'PETROL',
         'DIESEL',
         'ELECTRIC',
@@ -98,7 +158,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE route_status AS ENUM (
+    CREATE TYPE enum_routes_status AS ENUM (
         'ACTIVE',
         'INACTIVE',
         'SEASONAL'
@@ -108,7 +168,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE schedule_status AS ENUM (
+    CREATE TYPE enum_schedules_status AS ENUM (
         'SCHEDULED',
         'BOARDING',
         'DEPARTED',
@@ -122,7 +182,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE booking_status AS ENUM (
+    CREATE TYPE enum_bookings_status AS ENUM (
         'PENDING',
         'CONFIRMED',
         'CANCELLED',
@@ -134,7 +194,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE payment_status AS ENUM (
+    CREATE TYPE enum_bookings_payment_status AS ENUM (
         'UNPAID',
         'PAID',
         'REFUNDED',
@@ -145,7 +205,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE payment_method AS ENUM (
+    CREATE TYPE enum_bookings_payment_method AS ENUM (
         'TELEBIRR',
         'CBE_BIRR',
         'CASH',
@@ -157,7 +217,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE optimization_status AS ENUM (
+    CREATE TYPE enum_route_optimizations_status AS ENUM (
         'PENDING',
         'OPTIMIZING',
         'COMPLETED',
@@ -168,7 +228,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE location_status AS ENUM (
+    CREATE TYPE enum_vehicle_location_history_status AS ENUM (
         'ACTIVE',
         'IDLE',
         'OFFLINE',
@@ -276,7 +336,7 @@ CREATE TABLE IF NOT EXISTS routes (
     estimated_duration INTEGER NOT NULL,
     base_fare NUMERIC(10,2) NOT NULL,
 
-    status route_status DEFAULT 'ACTIVE',
+    status enum_routes_status DEFAULT 'ACTIVE',
     transport_type TEXT[] DEFAULT ARRAY['BUS']::TEXT[],
     is_intercity BOOLEAN DEFAULT FALSE,
 
@@ -298,7 +358,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
 
     plate_number VARCHAR(50) UNIQUE NOT NULL,
 
-    type vehicle_type NOT NULL,
+    type enum_vehicles_type NOT NULL,
 
     make VARCHAR(100) NOT NULL,
     model VARCHAR(100) NOT NULL,
@@ -309,9 +369,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
 
     capacity INTEGER NOT NULL,
 
-    status vehicle_status DEFAULT 'ACTIVE',
+    status enum_vehicles_status DEFAULT 'ACTIVE',
 
-    fuel_type fuel_type DEFAULT 'DIESEL',
+    fuel_type enum_vehicles_fuel_type DEFAULT 'DIESEL',
 
     assigned_driver_id UUID REFERENCES drivers(id) ON DELETE SET NULL,
 
@@ -367,7 +427,7 @@ CREATE TABLE IF NOT EXISTS vehicle_location_history (
 
     battery_level INTEGER DEFAULT 100,
 
-    status location_status DEFAULT 'ACTIVE'
+    status enum_vehicle_location_history_status DEFAULT 'ACTIVE'
 );
 
 -- ==========================================
@@ -391,7 +451,7 @@ CREATE TABLE IF NOT EXISTS schedules (
 
     actual_arrival TIMESTAMP WITH TIME ZONE,
 
-    status schedule_status DEFAULT 'SCHEDULED',
+    status enum_schedules_status DEFAULT 'SCHEDULED',
 
     available_seats INTEGER NOT NULL,
 
@@ -439,11 +499,11 @@ CREATE TABLE IF NOT EXISTS bookings (
 
     currency VARCHAR(10) DEFAULT 'ETB',
 
-    status booking_status DEFAULT 'PENDING',
+    status enum_bookings_status DEFAULT 'PENDING',
 
-    payment_status payment_status DEFAULT 'UNPAID',
+    payment_status enum_bookings_payment_status DEFAULT 'UNPAID',
 
-    payment_method payment_method,
+    payment_method enum_bookings_payment_method,
 
     qr_code TEXT,
 
@@ -483,7 +543,7 @@ CREATE TABLE IF NOT EXISTS route_optimizations (
 
     vehicle_id UUID REFERENCES vehicles(id) ON DELETE CASCADE,
 
-    status optimization_status DEFAULT 'PENDING',
+    status enum_route_optimizations_status DEFAULT 'PENDING',
 
     optimization_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
