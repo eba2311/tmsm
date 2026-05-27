@@ -488,22 +488,120 @@ CREATE TABLE IF NOT EXISTS route_optimizations (
 -- 12. MAINTENANCE LOGS
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE maintenance_log_type AS ENUM (
+        'ROUTINE',
+        'REPAIR',
+        'INSPECTION',
+        'EMERGENCY',
+        'UPGRADE'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE maintenance_log_status AS ENUM (
+        'SCHEDULED',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'CANCELLED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE maintenance_log_priority AS ENUM (
+        'LOW',
+        'MEDIUM',
+        'HIGH',
+        'URGENT'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE maintenance_log_recurring_interval AS ENUM (
+        'DAILY',
+        'WEEKLY',
+        'MONTHLY',
+        'QUARTERLY',
+        'YEARLY',
+        'MILEAGE_BASED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS maintenance_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     vehicle_id UUID REFERENCES vehicles(id) ON DELETE CASCADE,
 
-    description TEXT,
+    type maintenance_log_type NOT NULL,
 
-    cost NUMERIC(10,2),
+    description TEXT NOT NULL,
 
-    date_performed TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    cost NUMERIC(10,2) DEFAULT 0,
 
-    performed_by VARCHAR(255),
+    mileage_at_service NUMERIC(10,2),
+
+    serviced_by VARCHAR(255),
+
+    garage VARCHAR(255),
+
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+
+    end_date TIMESTAMP WITH TIME ZONE,
+
+    status maintenance_log_status DEFAULT 'SCHEDULED',
+
+    priority maintenance_log_priority DEFAULT 'MEDIUM',
+
+    parts_replaced JSONB DEFAULT '[]',
+
+    next_service_mileage NUMERIC(10,2),
+
+    next_service_date TIMESTAMP WITH TIME ZONE,
+
+    attachments TEXT[] DEFAULT ARRAY[]::TEXT[],
+
+    created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    notes TEXT,
+
+    is_recurring BOOLEAN DEFAULT FALSE,
+
+    recurring_interval maintenance_log_recurring_interval,
+
+    recurring_interval_value INTEGER,
+
+    reminder_days INTEGER DEFAULT 7,
+
+    reminder_sent BOOLEAN DEFAULT FALSE,
+
+    reminder_date TIMESTAMP WITH TIME ZONE,
+
+    assigned_to_id UUID REFERENCES drivers(id) ON DELETE SET NULL,
+
+    estimated_duration INTEGER,
+
+    actual_duration INTEGER,
+
+    completed_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    completed_at TIMESTAMP WITH TIME ZONE,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS maintenance_logs_vehicle_id_start_date ON maintenance_logs(vehicle_id, start_date);
+CREATE INDEX IF NOT EXISTS maintenance_logs_status ON maintenance_logs(status);
+CREATE INDEX IF NOT EXISTS maintenance_logs_next_service_date ON maintenance_logs(next_service_date);
+CREATE INDEX IF NOT EXISTS maintenance_logs_priority ON maintenance_logs(priority);
 
 -- ==========================================
 -- 13. AUDIT LOGS
