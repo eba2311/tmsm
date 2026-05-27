@@ -51,7 +51,7 @@ router.post('/', async (req, res, next) => {
       driverId,
       rating: parseFloat(rating),
       comment,
-      raterId: req.user.id
+      passengerId: req.user.id
     });
 
     // Update driver's average rating
@@ -77,7 +77,7 @@ router.get('/:driverId', async (req, res, next) => {
     const ratings = await DriverRating.findAll({
       where: { driverId: req.params.driverId },
       include: [
-        { model: User, as: 'rater', attributes: ['name'] }
+        { model: User, as: 'passenger', attributes: ['name'] }
       ]
     });
 

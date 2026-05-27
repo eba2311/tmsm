@@ -80,10 +80,17 @@ router.get('/:id/occupancy', async (req, res, next) => {
         scheduleId: req.params.id,
         status: ['PENDING', 'CONFIRMED']
       },
-      attributes: ['seatNumber']
+      attributes: ['passengers']
     });
     
-    const occupiedSeats = bookings.map(b => b.seatNumber).filter(Boolean);
+    const occupiedSeats = [];
+    bookings.forEach(b => {
+      if (b.passengers && Array.isArray(b.passengers)) {
+        b.passengers.forEach(p => {
+          if (p.seatNumber) occupiedSeats.push(String(p.seatNumber));
+        });
+      }
+    });
     
     res.json({ success: true, data: { occupied: occupiedSeats } });
   } catch (err) { next(err); }

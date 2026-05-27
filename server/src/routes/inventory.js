@@ -67,7 +67,7 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
   try {
     const item = await Inventory.create({
       ...req.body,
-      status: req.body.status || 'IN_STOCK'
+      status: req.body.status || 'AVAILABLE'
     });
     res.status(201).json({ success: true, data: item });
   } catch (err) { next(err); }

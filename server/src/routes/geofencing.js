@@ -21,7 +21,8 @@ router.post('/zones', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, nex
   try {
     const zone = await Geofence.create({
       ...req.body,
-      status: req.body.status || 'ACTIVE'
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+      createdById: req.user.id
     });
     res.status(201).json({ success: true, data: zone });
   } catch (err) { next(err); }

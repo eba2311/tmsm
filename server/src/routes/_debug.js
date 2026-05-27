@@ -1,63 +1,43 @@
 const express = require('express');
+const supabase = require('../config/supabase');
+const { authenticate, authorize } = require('../middlewares/auth');
+
 const router = express.Router();
+router.use(authenticate, authorize('SUPER_ADMIN'));
 
-const Notification = require('../models/Notification');
-const Vehicle = require('../models/Vehicle');
+// GET /api/v1/debug/db
+router.get('/db', async (req, res, next) => {
+  try {
+    const { data, error, count } = await supabase.from('users').select('id', { count: 'exact', head: true });
+    res.json({ success: true, data: { database: error ? 'ERROR' : 'OK', userCount: count || 0, error: error?.message } });
+  } catch (err) { next(err); }
+});
 
-function extractRoutes(app) {
-  const out = [];
-  const stack = app._router?.stack || [];
-  stack.forEach((layer) => {
-    if (layer.route && layer.route.path) {
-      const methods = Object.keys(layer.route.methods || {}).map((m) => m.toUpperCase());
-      out.push({ path: layer.route.path, methods });
-    } else if (layer.name === 'router' && layer.handle && layer.handle.stack) {
-      const prefix = layer.regexp && layer.regexp.source ? layer.regexp.source : '';
-      layer.handle.stack.forEach((l) => {
-        if (l.route && l.route.path) {
-          const methods = Object.keys(l.route.methods || {}).map((m) => m.toUpperCase());
-          out.push({ path: (layer.regexp?.toString() || '') + l.route.path, methods });
-        }
-      });
+// GET /api/v1/debug/env
+router.get('/env', async (req, res, next) => {
+  res.json({
+    success: true,
+    data: {
+      NODE_ENV: process.env.NODE_ENV,
+      SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'MISSING',
+      SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? 'SET' : 'MISSING',
+      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET'
     }
   });
-  return out;
-}
-
-router.get('/', (req, res, next) => {
-  try {
-    const routes = extractRoutes(req.app);
-    res.json({ success: true, data: routes });
-  } catch (e) { next(e); }
 });
 
-// Emit a test notification to a user (for debugging)
-router.post('/emit-notification', async (req, res, next) => {
+// GET /api/v1/debug/tables
+router.get('/tables', async (req, res, next) => {
   try {
-    const { userId, title = 'Test', message = 'This is a test notification', type = 'SYSTEM' } = req.body;
-    if (!userId) return res.status(400).json({ success: false, message: 'userId required' });
-    const n = await Notification.create({ recipient: userId, title, message, type, data: req.body });
-    const ns = req.app.locals.notificationsNs;
-    if (ns && ns.sendToUser) ns.sendToUser(String(userId), n);
-    return res.json({ success: true, data: n });
-  } catch (e) { next(e); }
-});
-
-// Emit a vehicle location update via /tracking namespace
-router.post('/emit-location', async (req, res, next) => {
-  try {
-    const { vehicleId, lat, lng } = req.body;
-    if (!vehicleId || lat == null || lng == null) return res.status(400).json({ success: false, message: 'vehicleId, lat, lng required' });
-    // update vehicle DB location
-    await Vehicle.findByIdAndUpdate(vehicleId, { currentLocation: { type: 'Point', coordinates: [lng, lat] } });
-    const ns = req.app.locals.trackingNs;
-    const update = { vehicleId: String(vehicleId), lat, lng, updatedAt: new Date() };
-    if (ns) {
-      ns.to(`vehicle:${vehicleId}`).emit('vehicle:location', update);
-      ns.emit('vehicle:location', update);
+    const tables = ['users', 'drivers', 'vehicles', 'routes', 'schedules', 'bookings', 'maintenance_logs', 'audit_logs', 'route_optimizations', 'vehicle_location_history'];
+    const results = {};
+    for (const table of tables) {
+      const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+      results[table] = error ? `ERROR: ${error.message}` : count;
     }
-    return res.json({ success: true, data: update });
-  } catch (e) { next(e); }
+    res.json({ success: true, data: results });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

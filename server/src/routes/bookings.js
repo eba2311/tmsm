@@ -133,16 +133,23 @@ router.post('/', bookingLimiter, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Duplicate seat numbers in request' });
     }
 
-    // 2. Check for taken seats
+    // 2. Check for taken seats (from passengers JSONB)
     const existingBookings = await Booking.findAll({
       where: {
         scheduleId: scheduleId,
         status: ['PENDING', 'CONFIRMED']
       },
-      attributes: ['seatNumber']
+      attributes: ['passengers']
     });
     
-    const takenSeats = new Set(existingBookings.map(b => String(b.seatNumber)));
+    const takenSeats = new Set();
+    existingBookings.forEach(b => {
+      if (b.passengers && Array.isArray(b.passengers)) {
+        b.passengers.forEach(p => {
+          if (p.seatNumber) takenSeats.add(String(p.seatNumber));
+        });
+      }
+    });
     const clash = seatNumbers.find(s => takenSeats.has(s));
     if (clash) {
       return res.status(400).json({ success: false, message: `Seat ${clash} is already reserved` });
@@ -150,22 +157,22 @@ router.post('/', bookingLimiter, async (req, res, next) => {
 
     const farePerSeat = schedule.fare;
     
-    // 3. Insert Bookings (one per passenger seat)
-    const bookingRecords = passengers.map(p => ({
+    // 3. Insert Booking (one booking with all passengers)
+    const booking = await Booking.create({
       scheduleId: scheduleId,
       passengerId: req.user.id,
-      seatNumber: String(p.seatNumber),
-      amountPaid: farePerSeat,
+      passengers: passengers,
+      totalAmount: farePerSeat * passengers.length,
       status: 'PENDING',
-      bookingDate: new Date()
-    }));
+      paymentStatus: 'UNPAID'
+    });
 
-    const createdBookings = await Booking.bulkCreate(bookingRecords);
+    const createdBookings = [booking];
 
     // 4. Update available seats
     await schedule.update({ availableSeats: schedule.availableSeats - passengers.length });
 
-    res.status(201).json({ success: true, data: createdBookings });
+    res.status(201).json({ success: true, data: booking });
   } catch (err) { next(err); }
 });
 

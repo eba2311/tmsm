@@ -38,17 +38,22 @@ router.get('/', async (req, res, next) => {
 // POST /api/v1/fuel-records
 router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const { vehicleId, liters, costPerLiter, totalCost, date, odometer, filledBy, notes } = req.body;
+    const { vehicleId, quantity, costPerUnit, totalCost, date, odometerReading, previousOdometer, station, location, paymentMethod, receiptNumber, notes } = req.body;
 
     const record = await FuelRecord.create({
       vehicleId,
-      liters,
-      costPerLiter,
-      totalCost: totalCost || (liters * costPerLiter),
+      quantity,
+      costPerUnit,
+      totalCost,
       date: date || new Date(),
-      odometer,
-      filledBy: filledBy || req.user.name,
-      notes
+      odometerReading,
+      previousOdometer,
+      station,
+      location,
+      paymentMethod,
+      receiptNumber,
+      notes,
+      operatorId: req.user.id
     });
 
     res.status(201).json({ success: true, data: record });
@@ -78,11 +83,7 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
     const record = await FuelRecord.findByPk(req.params.id);
     if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-    await record.update({
-      totalCost: req.body.totalCost,
-      notes: req.body.notes,
-      filledBy: req.body.filledBy
-    });
+    await record.update(req.body);
     res.json({ success: true, data: record });
   } catch (err) { next(err); }
 });

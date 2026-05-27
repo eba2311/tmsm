@@ -27,7 +27,7 @@ router.get('/transactions', async (req, res, next) => {
       include: [
         { model: User, as: 'passenger', attributes: ['name', 'email'] }
       ],
-      attributes: ['id', 'amountPaid', 'status', 'bookingDate', 'seatNumber'],
+      attributes: ['id', 'totalAmount', 'status', 'createdAt', 'passengers'],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['createdAt', 'DESC']]
@@ -55,9 +55,9 @@ router.get('/summary', async (req, res, next) => {
   try {
     const bookings = await Booking.findAll({
       where: { status: ['CONFIRMED', 'USED'] },
-      attributes: ['amountPaid', 'status']
+      attributes: ['totalAmount', 'status']
     });
-    const total = bookings.reduce((s, b) => s + (parseFloat(b.amountPaid) || 0), 0);
+    const total = bookings.reduce((s, b) => s + (parseFloat(b.totalAmount) || 0), 0);
     res.json({ success: true, data: { totalRevenue: total, totalTransactions: bookings.length, refunds: 0 } });
   } catch (err) { next(err); }
 });

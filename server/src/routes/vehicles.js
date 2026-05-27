@@ -197,14 +197,14 @@ router.get('/:id/maintenance', async (req, res, next) => {
 // POST /api/v1/vehicles/:id/maintenance
 router.post('/:id/maintenance', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const { description, cost, date_performed } = req.body;
+    const { description, cost, datePerformed, type } = req.body;
     const log = await MaintenanceLog.create({
       vehicleId: req.params.id,
-      type: 'ROUTINE',
+      type: type || 'ROUTINE',
       description,
       cost: cost || 0,
-      startDate: date_performed || new Date(),
-      endDate: date_performed || new Date(),
+      startDate: datePerformed || new Date(),
+      endDate: datePerformed || new Date(),
       status: 'COMPLETED',
       createdById: req.user.id
     });

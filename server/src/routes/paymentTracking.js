@@ -25,7 +25,7 @@ router.get('/', async (req, res, next) => {
           include: [
             { model: User, as: 'passenger', attributes: ['name', 'email', 'phone'] }
           ],
-          attributes: ['id', 'amountPaid', 'status', 'bookingDate', 'seatNumber', 'scheduleId']
+          attributes: ['id', 'totalAmount', 'status', 'createdAt', 'passengers', 'scheduleId']
         }
       ],
       limit: parseInt(limit),

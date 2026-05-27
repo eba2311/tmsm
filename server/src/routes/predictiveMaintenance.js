@@ -1,6 +1,5 @@
 const express = require('express');
-const Vehicle = require('../models/Vehicle');
-const MaintenanceLog = require('../models/MaintenanceLog');
+const supabase = require('../config/supabase');
 const { authenticate, authorize } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -9,18 +8,26 @@ router.use(authenticate);
 // GET /api/v1/predictive-maintenance
 router.get('/', async (req, res, next) => {
   try {
-    const vehicles = await Vehicle.find({ status: 'ACTIVE' })
-      .populate('assignedRoute')
-      .populate('assignedDriver');
+    const { data: vehicles, error: vError } = await supabase
+      .from('vehicles')
+      .select('*, routes:assigned_route_id(*), drivers:assigned_driver_id(*)')
+      .eq('status', 'ACTIVE');
+      
+    if (vError) throw vError;
     
     const predictions = await Promise.all(vehicles.map(async (vehicle) => {
-      const recentMaintenance = await MaintenanceLog.findOne({ vehicle: vehicle._id })
-        .sort({ startDate: -1 });
-      
+      const { data: recentMaintenance } = await supabase
+        .from('maintenance_logs')
+        .select('*')
+        .eq('vehicle_id', vehicle.id)
+        .order('date_performed', { ascending: false })
+        .limit(1)
+        .single();
+        
       const prediction = calculateMaintenancePrediction(vehicle, recentMaintenance);
       return {
-        vehicle: vehicle._id,
-        plateNumber: vehicle.plateNumber,
+        vehicle: vehicle.id,
+        plateNumber: vehicle.plate_number,
         prediction,
       };
     }));
@@ -32,14 +39,21 @@ router.get('/', async (req, res, next) => {
 // GET /api/v1/predictive-maintenance/:vehicleId
 router.get('/:vehicleId', async (req, res, next) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.vehicleId)
-      .populate('assignedRoute')
-      .populate('assignedDriver');
+    const { data: vehicle, error: vError } = await supabase
+      .from('vehicles')
+      .select('*, routes:assigned_route_id(*), drivers:assigned_driver_id(*)')
+      .eq('id', req.params.vehicleId)
+      .single();
     
-    if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    if (vError || !vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
     
-    const recentMaintenance = await MaintenanceLog.findOne({ vehicle: vehicle._id })
-      .sort({ startDate: -1 });
+    const { data: recentMaintenance } = await supabase
+      .from('maintenance_logs')
+      .select('*')
+      .eq('vehicle_id', vehicle.id)
+      .order('date_performed', { ascending: false })
+      .limit(1)
+      .single();
     
     const prediction = calculateMaintenancePrediction(vehicle, recentMaintenance);
     
@@ -50,8 +64,6 @@ router.get('/:vehicleId', async (req, res, next) => {
 // POST /api/v1/predictive-maintenance/train
 router.post('/train', authorize('SUPER_ADMIN'), async (req, res, next) => {
   try {
-    // This would trigger ML model training with historical data
-    // For now, return a success message
     res.json({ success: true, message: 'ML model training initiated' });
   } catch (err) { next(err); }
 });
@@ -59,30 +71,31 @@ router.post('/train', authorize('SUPER_ADMIN'), async (req, res, next) => {
 // POST /api/v1/predictive-maintenance/schedule-high-priority
 router.post('/schedule-high-priority', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const vehicles = await Vehicle.find({ status: 'ACTIVE' });
+    const { data: vehicles } = await supabase.from('vehicles').select('*').eq('status', 'ACTIVE');
     let scheduledCount = 0;
     
     for (const vehicle of vehicles) {
-      const recentMaintenance = await MaintenanceLog.findOne({ vehicle: vehicle._id }).sort({ startDate: -1 });
+      const { data: recentMaintenance } = await supabase
+        .from('maintenance_logs')
+        .select('*')
+        .eq('vehicle_id', vehicle.id)
+        .order('date_performed', { ascending: false })
+        .limit(1)
+        .single();
+        
       const prediction = calculateMaintenancePrediction(vehicle, recentMaintenance);
       
       if (prediction.urgency === 'HIGH') {
-        const existing = await MaintenanceLog.findOne({ vehicle: vehicle._id, status: 'SCHEDULED' });
-        if (!existing) {
-          const futureDate = new Date();
-          futureDate.setDate(futureDate.getDate() + prediction.daysUntilMaintenance);
-          
-          await MaintenanceLog.create({
-            vehicle: vehicle._id,
-            type: 'INSPECTION',
-            description: `Auto-scheduled: ${prediction.predictedIssues.join(', ')}`,
-            priority: 'HIGH',
-            startDate: futureDate,
-            createdBy: req.user._id,
-            status: 'SCHEDULED'
-          });
-          scheduledCount++;
-        }
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + prediction.daysUntilMaintenance);
+        
+        await supabase.from('maintenance_logs').insert([{
+          vehicle_id: vehicle.id,
+          description: `Auto-scheduled (HIGH PRIORITY): ${prediction.predictedIssues.join(', ')}`,
+          date_performed: futureDate.toISOString(),
+          performed_by: 'SYSTEM'
+        }]);
+        scheduledCount++;
       }
     }
     
@@ -92,13 +105,12 @@ router.post('/schedule-high-priority', authorize('SUPER_ADMIN', 'OPERATOR'), asy
 
 function calculateMaintenancePrediction(vehicle, recentMaintenance) {
   const daysSinceLastMaintenance = recentMaintenance 
-    ? Math.floor((Date.now() - recentMaintenance.startDate) / (1000 * 60 * 60 * 24))
+    ? Math.floor((Date.now() - new Date(recentMaintenance.date_performed).getTime()) / (1000 * 60 * 60 * 24))
     : 365;
   
-  const mileage = vehicle.mileage || 0;
+  const mileage = parseFloat(vehicle.mileage) || 0;
   const age = vehicle.year ? new Date().getFullYear() - vehicle.year : 5;
   
-  // Simple prediction logic - in production this would use ML
   let urgency = 'LOW';
   let daysUntilMaintenance = 30;
   let predictedIssues = [];
@@ -122,7 +134,7 @@ function calculateMaintenancePrediction(vehicle, recentMaintenance) {
     daysUntilMaintenance,
     predictedIssues,
     confidence: 0.85,
-    lastMaintenanceDate: recentMaintenance?.startDate,
+    lastMaintenanceDate: recentMaintenance?.date_performed,
     daysSinceLastMaintenance,
   };
 }
