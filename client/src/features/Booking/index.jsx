@@ -105,7 +105,7 @@ export default function Booking() {
     <div className="space-y-5">
       <div>
         <h1 className="page-title">Booking & Tickets</h1>
-        <p className="page-subtitle">REST booking engine + payments + QR (MongoDB)</p>
+        <p className="page-subtitle">REST booking engine + payments + QR (PostgreSQL)</p>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

@@ -113,7 +113,7 @@ export default function Reports() {
       <div className="section-header flex-wrap gap-3">
         <div>
           <h1 className="page-title">Reports & Analytics</h1>
-          <p className="page-subtitle">Live aggregates from MongoDB — ሪፖርቶች</p>
+          <p className="page-subtitle">Live aggregates from PostgreSQL — ሪፖርቶች</p>
         </div>
         <div className="flex gap-2">
           <a href="/api/v1/docs/openapi.json" target="_blank" rel="noreferrer" className="btn-secondary flex items-center gap-2 text-xs">

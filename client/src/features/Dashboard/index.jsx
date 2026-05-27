@@ -179,7 +179,7 @@ export default function Dashboard() {
           <div className="section-header">
             <h3 className="font-semibold text-sidebar">Top routes — ዋና መስመሮች</h3>
             <span className="badge-info">
-              <MapPin className="w-3 h-3" /> {canReports ? 'MongoDB aggregate' : 'N/A'}
+              <MapPin className="w-3 h-3" /> {canReports ? 'PostgreSQL query' : 'N/A'}
             </span>
           </div>
           <div className="table-wrapper">
@@ -222,7 +222,7 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Database (MongoDB)</span>
+              <span className="text-sm text-gray-600">Database (PostgreSQL)</span>
               <span className="flex items-center gap-1.5 text-xs font-bold text-etgreen">
                 <span className="w-2 h-2 rounded-full bg-etgreen" /> CONNECTED
               </span>
