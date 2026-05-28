@@ -121,6 +121,109 @@ BEGIN
         ALTER TABLE vehicle_location_history ALTER COLUMN status TYPE VARCHAR(50);
         DROP TYPE location_status;
     END IF;
+
+    -- Drop old drivers types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'drivers_status') THEN
+        ALTER TABLE drivers ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE drivers_status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'drivers_license_class') THEN
+        ALTER TABLE drivers ALTER COLUMN license_class TYPE VARCHAR(50);
+        DROP TYPE drivers_license_class;
+    END IF;
+
+    -- Drop old payments types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payments_method') THEN
+        ALTER TABLE payments ALTER COLUMN method TYPE VARCHAR(50);
+        DROP TYPE payments_method;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payments_status') THEN
+        ALTER TABLE payments ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE payments_status;
+    END IF;
+
+    -- Drop old fuel_records types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_records_fuel_type') THEN
+        ALTER TABLE fuel_records ALTER COLUMN fuel_type TYPE VARCHAR(50);
+        DROP TYPE fuel_records_fuel_type;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_records_unit') THEN
+        ALTER TABLE fuel_records ALTER COLUMN unit TYPE VARCHAR(50);
+        DROP TYPE fuel_records_unit;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_records_payment_method') THEN
+        ALTER TABLE fuel_records ALTER COLUMN payment_method TYPE VARCHAR(50);
+        DROP TYPE fuel_records_payment_method;
+    END IF;
+
+    -- Drop old driver_documents types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_documents_document_type') THEN
+        ALTER TABLE driver_documents ALTER COLUMN document_type TYPE VARCHAR(50);
+        DROP TYPE driver_documents_document_type;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_documents_status') THEN
+        ALTER TABLE driver_documents ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE driver_documents_status;
+    END IF;
+
+    -- Drop old driver_payrolls types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_payrolls_period_type') THEN
+        ALTER TABLE driver_payrolls ALTER COLUMN period_type TYPE VARCHAR(50);
+        DROP TYPE driver_payrolls_period_type;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_payrolls_status') THEN
+        ALTER TABLE driver_payrolls ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE driver_payrolls_status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_payrolls_payment_method') THEN
+        ALTER TABLE driver_payrolls ALTER COLUMN payment_method TYPE VARCHAR(50);
+        DROP TYPE driver_payrolls_payment_method;
+    END IF;
+
+    -- Drop old geofences types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'geofences_type') THEN
+        ALTER TABLE geofences ALTER COLUMN type TYPE VARCHAR(50);
+        DROP TYPE geofences_type;
+    END IF;
+
+    -- Drop old payment_tracking types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_tracking_currency') THEN
+        ALTER TABLE payment_tracking ALTER COLUMN currency TYPE VARCHAR(50);
+        DROP TYPE payment_tracking_currency;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_tracking_method') THEN
+        ALTER TABLE payment_tracking ALTER COLUMN method TYPE VARCHAR(50);
+        DROP TYPE payment_tracking_method;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_tracking_status') THEN
+        ALTER TABLE payment_tracking ALTER COLUMN status TYPE VARCHAR(50);
+        DROP TYPE payment_tracking_status;
+    END IF;
+
+    -- Drop old report_schedules types
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_schedules_report_type') THEN
+        ALTER TABLE report_schedules ALTER COLUMN report_type TYPE VARCHAR(50);
+        DROP TYPE report_schedules_report_type;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_schedules_schedule_type') THEN
+        ALTER TABLE report_schedules ALTER COLUMN schedule_type TYPE VARCHAR(50);
+        DROP TYPE report_schedules_schedule_type;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_schedules_format') THEN
+        ALTER TABLE report_schedules ALTER COLUMN format TYPE VARCHAR(50);
+        DROP TYPE report_schedules_format;
+    END IF;
 END $$;
 
 DO $$ BEGIN
@@ -239,7 +342,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE drivers_status AS ENUM (
+    CREATE TYPE enum_drivers_status AS ENUM (
         'ACTIVE',
         'INACTIVE',
         'ON_LEAVE',
@@ -250,7 +353,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE drivers_license_class AS ENUM (
+    CREATE TYPE enum_drivers_license_class AS ENUM (
         'A',
         'B',
         'C',
@@ -302,15 +405,43 @@ CREATE TABLE IF NOT EXISTS drivers (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
 
     license_number VARCHAR(100) UNIQUE NOT NULL,
-    license_type VARCHAR(50),
+    license_class enum_drivers_license_class,
 
     license_expiry TIMESTAMP WITH TIME ZONE,
 
-    years_of_experience INTEGER DEFAULT 0,
+    national_id VARCHAR(100) UNIQUE,
 
-    rating NUMERIC(3,2) DEFAULT 0.0,
+    date_of_birth TIMESTAMP WITH TIME ZONE,
 
-    status VARCHAR(50) DEFAULT 'ACTIVE',
+    address JSONB DEFAULT '{"woreda": null, "kebele": null, "city": "Arba Minch", "region": "SNNPR"}',
+
+    experience INTEGER DEFAULT 0,
+
+    status enum_drivers_status DEFAULT 'ACTIVE',
+
+    assigned_vehicle_id UUID REFERENCES vehicles(id) ON DELETE SET NULL,
+
+    assigned_route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
+
+    operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    emergency_contact JSONB DEFAULT '{"name": null, "phone": null, "relation": null}',
+
+    salary NUMERIC(10,2) DEFAULT 0,
+
+    rating NUMERIC(2,1) DEFAULT 5,
+
+    total_trips INTEGER DEFAULT 0,
+
+    total_distance NUMERIC(10,2) DEFAULT 0,
+
+    bank_account VARCHAR(255),
+
+    bank_name VARCHAR(255),
+
+    photo TEXT DEFAULT '',
+
+    joining_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -413,7 +544,7 @@ CREATE TABLE IF NOT EXISTS vehicle_location_history (
 
     vehicle_id UUID REFERENCES vehicles(id) ON DELETE CASCADE,
 
-    location geometry(Point, 4326) NOT NULL,
+    location JSONB NOT NULL DEFAULT '{"type": "Point", "coordinates": [0, 0]}',
 
     speed NUMERIC(10,2) DEFAULT 0,
 
@@ -1047,6 +1178,30 @@ END $$;
 -- 15. PAYMENTS TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_payments_method AS ENUM (
+        'TELEBIRR',
+        'CBE_BIRR',
+        'CASH',
+        'CARD',
+        'BANK_TRANSFER'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_payments_status AS ENUM (
+        'PENDING',
+        'SUCCESS',
+        'FAILED',
+        'REFUNDED',
+        'CANCELLED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -1058,9 +1213,9 @@ CREATE TABLE IF NOT EXISTS payments (
 
     currency VARCHAR(10) DEFAULT 'ETB',
 
-    method VARCHAR(50) NOT NULL,
+    method enum_payments_method NOT NULL,
 
-    status VARCHAR(50) DEFAULT 'PENDING',
+    status enum_payments_status DEFAULT 'PENDING',
 
     transaction_id VARCHAR(255) UNIQUE,
 
@@ -1088,6 +1243,39 @@ CREATE TABLE IF NOT EXISTS payments (
 -- 16. FUEL RECORDS TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_fuel_records_fuel_type AS ENUM (
+        'DIESEL',
+        'PETROL',
+        'CNG',
+        'LPG',
+        'ELECTRIC'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_fuel_records_unit AS ENUM (
+        'LITERS',
+        'GALLONS',
+        'KWH'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_fuel_records_payment_method AS ENUM (
+        'CASH',
+        'CARD',
+        'CREDIT',
+        'COMPANY_ACCOUNT'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS fuel_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -1097,11 +1285,11 @@ CREATE TABLE IF NOT EXISTS fuel_records (
 
     date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
-    fuel_type VARCHAR(50) NOT NULL,
+    fuel_type enum_fuel_records_fuel_type NOT NULL,
 
     quantity NUMERIC(10,2) NOT NULL,
 
-    unit VARCHAR(20) DEFAULT 'LITERS',
+    unit enum_fuel_records_unit DEFAULT 'LITERS',
 
     cost_per_unit NUMERIC(10,2) NOT NULL,
 
@@ -1119,7 +1307,7 @@ CREATE TABLE IF NOT EXISTS fuel_records (
 
     location JSONB,
 
-    payment_method VARCHAR(50) DEFAULT 'CASH',
+    payment_method enum_fuel_records_payment_method DEFAULT 'CASH',
 
     receipt_number VARCHAR(255),
 
@@ -1135,12 +1323,40 @@ CREATE TABLE IF NOT EXISTS fuel_records (
 -- 17. DRIVER DOCUMENTS TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_driver_documents_document_type AS ENUM (
+        'LICENSE',
+        'PERMIT',
+        'INSURANCE',
+        'BACKGROUND_CHECK',
+        'MEDICAL_CERTIFICATE',
+        'TRAINING_CERTIFICATE',
+        'CONTRACT',
+        'ID_CARD',
+        'CERTIFICATION',
+        'OTHER'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_driver_documents_status AS ENUM (
+        'PENDING',
+        'VERIFIED',
+        'EXPIRED',
+        'REJECTED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS driver_documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     driver_id UUID REFERENCES drivers(id) ON DELETE CASCADE NOT NULL,
 
-    document_type VARCHAR(50) NOT NULL,
+    document_type enum_driver_documents_document_type NOT NULL,
 
     document_number VARCHAR(255),
 
@@ -1158,7 +1374,7 @@ CREATE TABLE IF NOT EXISTS driver_documents (
 
     mime_type VARCHAR(100),
 
-    status VARCHAR(50) DEFAULT 'PENDING',
+    status enum_driver_documents_status DEFAULT 'PENDING',
 
     verified_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
 
@@ -1209,12 +1425,45 @@ CREATE TABLE IF NOT EXISTS driver_ratings (
 -- 19. DRIVER PAYROLLS TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_driver_payrolls_period_type AS ENUM (
+        'WEEKLY',
+        'BI_WEEKLY',
+        'MONTHLY',
+        'QUARTERLY'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_driver_payrolls_status AS ENUM (
+        'PENDING',
+        'PROCESSED',
+        'PAID',
+        'CANCELLED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_driver_payrolls_payment_method AS ENUM (
+        'BANK_TRANSFER',
+        'CASH',
+        'MOBILE_MONEY',
+        'CHECK'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS driver_payrolls (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     driver_id UUID REFERENCES drivers(id) ON DELETE CASCADE NOT NULL,
 
-    period_type VARCHAR(50) NOT NULL,
+    period_type enum_driver_payrolls_period_type NOT NULL,
 
     period_start_date TIMESTAMP WITH TIME ZONE NOT NULL,
 
@@ -1240,9 +1489,9 @@ CREATE TABLE IF NOT EXISTS driver_payrolls (
 
     net_pay NUMERIC(10,2),
 
-    status VARCHAR(50) DEFAULT 'PENDING',
+    status enum_driver_payrolls_status DEFAULT 'PENDING',
 
-    payment_method VARCHAR(50),
+    payment_method enum_driver_payrolls_payment_method,
 
     payment_date TIMESTAMP WITH TIME ZONE,
 
@@ -1266,12 +1515,22 @@ CREATE TABLE IF NOT EXISTS driver_payrolls (
 -- 20. GEOFENCES TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_geofences_type AS ENUM (
+        'CIRCLE',
+        'POLYGON',
+        'RECTANGLE'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS geofences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     name VARCHAR(255) NOT NULL,
 
-    type VARCHAR(50) NOT NULL,
+    type enum_geofences_type NOT NULL,
 
     coordinates JSONB NOT NULL,
 
@@ -1297,6 +1556,42 @@ CREATE TABLE IF NOT EXISTS geofences (
 -- 21. PAYMENT TRACKING TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_payment_tracking_currency AS ENUM (
+        'ETB',
+        'USD',
+        'EUR'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_payment_tracking_method AS ENUM (
+        'TELEBIRR',
+        'CBE_BIRR',
+        'AMOLE',
+        'CASH',
+        'CARD',
+        'BANK_TRANSFER'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_payment_tracking_status AS ENUM (
+        'PENDING',
+        'PROCESSING',
+        'COMPLETED',
+        'FAILED',
+        'REFUNDED',
+        'CANCELLED'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS payment_tracking (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -1308,11 +1603,11 @@ CREATE TABLE IF NOT EXISTS payment_tracking (
 
     amount NUMERIC(10,2) NOT NULL,
 
-    currency VARCHAR(10) DEFAULT 'ETB',
+    currency enum_payment_tracking_currency DEFAULT 'ETB',
 
-    method VARCHAR(50) NOT NULL,
+    method enum_payment_tracking_method NOT NULL,
 
-    status VARCHAR(50) DEFAULT 'PENDING',
+    status enum_payment_tracking_status DEFAULT 'PENDING',
 
     payment_gateway VARCHAR(255),
 
@@ -1350,6 +1645,42 @@ CREATE TABLE IF NOT EXISTS payment_tracking (
 -- 22. REPORT SCHEDULES TABLE
 -- ==========================================
 
+DO $$ BEGIN
+    CREATE TYPE enum_report_schedules_report_type AS ENUM (
+        'overview',
+        'revenue',
+        'bookings',
+        'fleet',
+        'routes',
+        'performance',
+        'financial'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_report_schedules_schedule_type AS ENUM (
+        'daily',
+        'weekly',
+        'monthly',
+        'quarterly',
+        'yearly'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enum_report_schedules_format AS ENUM (
+        'pdf',
+        'excel',
+        'csv'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS report_schedules (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -1357,9 +1688,9 @@ CREATE TABLE IF NOT EXISTS report_schedules (
 
     description TEXT,
 
-    report_type VARCHAR(50) NOT NULL,
+    report_type enum_report_schedules_report_type NOT NULL,
 
-    schedule_type VARCHAR(50) NOT NULL,
+    schedule_type enum_report_schedules_schedule_type NOT NULL,
 
     schedule_day_of_week INTEGER CHECK (schedule_day_of_week >= 0 AND schedule_day_of_week <= 6),
 
@@ -1369,7 +1700,7 @@ CREATE TABLE IF NOT EXISTS report_schedules (
 
     filters JSONB DEFAULT '{"startDate": null, "endDate": null, "routes": [], "vehicles": [], "paymentMethods": [], "statuses": []}',
 
-    format VARCHAR(10) DEFAULT 'pdf',
+    format enum_report_schedules_format DEFAULT 'pdf',
 
     recipients TEXT[] NOT NULL,
 

@@ -11,6 +11,9 @@ const { Server } = require('socket.io');
 const { testConnection, syncDatabase } = require('./config/database');
 const logger = require('./config/logger');
 
+// Initialize model associations
+require('./models');
+
 // Route imports
 const authRoutes = require('./routes/auth');
 const vehicleRoutes = require('./routes/vehicles');

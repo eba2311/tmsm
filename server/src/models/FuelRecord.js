@@ -65,7 +65,7 @@ const FuelRecord = sequelize.define(
       type: DataTypes.STRING,
     },
     location: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
     },
     paymentMethod: {
       type: DataTypes.ENUM('CASH', 'CARD', 'CREDIT', 'COMPANY_ACCOUNT'),
