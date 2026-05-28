@@ -181,7 +181,7 @@ export default function Vehicles() {
             </thead>
             <tbody>
                 {vehicles.map((v) => (
-                <tr key={v._id}>
+                <tr key={v.id}>
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-lg">{typeIcons[v.type]}</div>
@@ -218,7 +218,7 @@ export default function Vehicles() {
                           type="button"
                           className="p-1.5 rounded-lg hover:bg-etgreen/10 text-etgreen"
                           aria-label="Maintenance"
-                          onClick={() => setMaintenanceVehicleId(v._id)}
+                          onClick={() => setMaintenanceVehicleId(v.id)}
                         >
                           <Wrench className="w-4 h-4" />
                         </button>
@@ -235,7 +235,7 @@ export default function Vehicles() {
       {view === 'grid' && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {vehicles.map((v) => (
-            <div key={v._id} className="card space-y-2">
+            <div key={v.id} className="card space-y-2">
               <div className="flex justify-between items-start">
                 <span className="text-3xl">{typeIcons[v.type]}</span>
                 <span className={statusColors[v.status]}>{v.status}</span>
@@ -247,7 +247,7 @@ export default function Vehicles() {
               <p className="text-sm">
                 {v.capacity} seats • {(v.mileage || 0).toLocaleString()} km
               </p>
-              <button type="button" className="btn-secondary !py-1.5 text-xs w-full mt-2" onClick={() => setMaintenanceVehicleId(v._id)}>
+              <button type="button" className="btn-secondary !py-1.5 text-xs w-full mt-2" onClick={() => setMaintenanceVehicleId(v.id)}>
                 Maintenance log
               </button>
             </div>
@@ -358,7 +358,7 @@ export default function Vehicles() {
             <div className="space-y-2 max-h-40 overflow-y-auto mb-4 border border-gray-100 rounded-xl p-2">
               {maintLogs.length === 0 && <p className="text-xs text-gray-500">No logs yet.</p>}
               {maintLogs.map((log) => (
-                <div key={log._id} className="text-xs border-b border-gray-50 pb-2">
+                <div key={log.id} className="text-xs border-b border-gray-50 pb-2">
                   <span className="font-semibold">{log.type}</span> — {log.description}{' '}
                   <span className="text-gold-dark">{log.cost} ETB</span>
                 </div>

@@ -36,7 +36,12 @@ export default function Drivers() {
       setIsModalOpen(false);
       setNewDriver({ name: '', email: '', phone: '', password: '', licenseNumber: '', licenseClass: '3', salary: 8000 });
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Failed to create driver'),
+    onError: (e) => {
+      const msg = typeof e.response?.data === 'string' 
+        ? e.response.data 
+        : (e.response?.data?.message || 'Failed to create driver');
+      toast.error(msg);
+    }
   });
 
   const filtered = drivers.filter((d) => {
@@ -200,7 +205,7 @@ export default function Drivers() {
           const name = d.user?.name || '—';
           const phone = d.user?.phone || '—';
           return (
-            <div key={d._id} className="card space-y-3 animate-fade-in">
+            <div key={d.id} className="card space-y-3 animate-fade-in">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-300 flex items-center justify-center text-white font-bold text-lg">

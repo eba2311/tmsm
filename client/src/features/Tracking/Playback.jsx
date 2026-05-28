@@ -99,7 +99,7 @@ export default function HistoricalPlayback() {
           >
             <option value="">Select Vehicle</option>
             {vehicles.map(v => (
-              <option key={v._id} value={v._id}>{v.plateNumber}</option>
+              <option key={v.id} value={v.id}>{v.plateNumber}</option>
             ))}
           </select>
           <input 

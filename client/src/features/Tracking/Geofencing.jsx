@@ -109,11 +109,11 @@ export default function Geofencing() {
             
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
               {geofences.map((fence) => (
-                <div 
-                  key={fence._id}
+                <div
+                  key={fence.id}
                   onClick={() => setSelectedFence(fence)}
                   className={`p-3 rounded-xl border-2 cursor-pointer transition-all
-                    ${selectedFence?._id === fence._id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
+                    ${selectedFence?.id === fence.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-bold text-sidebar text-sm">{fence.name}</p>
@@ -180,12 +180,12 @@ export default function Geofencing() {
               {/* Existing Geofences */}
               {geofences.map(fence => (
                 fence.type === 'CIRCLE' ? (
-                  <Circle 
-                    key={fence._id}
-                    center={[fence.coordinates[0][0], fence.coordinates[0][1]]} 
+                  <Circle
+                    key={fence.id}
+                    center={[fence.coordinates[0][0], fence.coordinates[0][1]]}
                     radius={fence.radius}
-                    pathOptions={{ 
-                      color: selectedFence?._id === fence._id ? '#1B4F8A' : '#C9920A',
+                    pathOptions={{
+                      color: selectedFence?.id === fence.id ? '#1B4F8A' : '#C9920A',
                       fillOpacity: 0.2
                     }}
                   >
@@ -197,11 +197,11 @@ export default function Geofencing() {
                     </Popup>
                   </Circle>
                 ) : (
-                  <Polygon 
-                    key={fence._id}
+                  <Polygon
+                    key={fence.id}
                     positions={fence.coordinates}
-                    pathOptions={{ 
-                      color: selectedFence?._id === fence._id ? '#1B4F8A' : '#C9920A',
+                    pathOptions={{
+                      color: selectedFence?.id === fence.id ? '#1B4F8A' : '#C9920A',
                       fillOpacity: 0.2
                     }}
                   />
@@ -314,18 +314,18 @@ export default function Geofencing() {
                     <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
                       {vehicles.map(v => (
                         <button
-                          key={v._id}
+                          key={v.id}
                           onClick={() => {
-                            const exists = newFence.assignedVehicles.includes(v._id);
+                            const exists = newFence.assignedVehicles.includes(v.id);
                             setNewFence({
                               ...newFence,
-                              assignedVehicles: exists 
-                                ? newFence.assignedVehicles.filter(id => id !== v._id)
-                                : [...newFence.assignedVehicles, v._id]
+                              assignedVehicles: exists
+                                ? newFence.assignedVehicles.filter(id => id !== v.id)
+                                : [...newFence.assignedVehicles, v.id]
                             });
                           }}
                           className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
-                            newFence.assignedVehicles.includes(v._id)
+                            newFence.assignedVehicles.includes(v.id)
                               ? 'bg-primary text-white'
                               : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                           }`}
@@ -367,10 +367,10 @@ export default function Geofencing() {
                   <button className="btn-secondary flex items-center gap-2">
                     <Edit2 className="w-4 h-4" /> Edit
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       if (window.confirm('Are you sure you want to delete this territory?')) {
-                        deleteFence.mutate(selectedFence._id);
+                        deleteFence.mutate(selectedFence.id);
                       }
                     }}
                     className="btn-secondary text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -409,7 +409,7 @@ export default function Geofencing() {
                   <h4 className="font-semibold text-xs uppercase tracking-wider text-gray-400">Assigned Fleet</h4>
                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-2">
                     {selectedFence.assignedVehicles?.map(v => (
-                      <div key={v._id} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-bold">
+                      <div key={v.id} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-bold">
                         <Bus className="w-3 h-3" />
                         {v.plateNumber}
                       </div>

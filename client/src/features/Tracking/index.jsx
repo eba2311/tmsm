@@ -161,13 +161,13 @@ export default function Tracking() {
       (list || []).forEach((v) => {
         if (v.currentLocation?.coordinates?.length === 2) {
           const [lng, lat] = v.currentLocation.coordinates;
-          next[String(v._id)] = { lat, lng };
+          next[String(v.id)] = { lat, lng };
         }
       });
       setLive((p) => ({ ...p, ...next }));
     });
 
-    const routeId = vehicles[0]?.assignedRoute?._id;
+    const routeId = vehicles[0]?.assignedRoute?.id;
     if (routeId) socket.emit('subscribe:route', { routeId: String(routeId) });
 
     return () => socket.disconnect();
@@ -187,7 +187,7 @@ export default function Tracking() {
 
   const markers = useMemo(() => {
     return vehicles.map((v) => {
-      const override = live[String(v._id)];
+      const override = live[String(v.id)];
       const coords = v.currentLocation?.coordinates;
       let lat = coords?.[1];
       let lng = coords?.[0];
@@ -196,12 +196,12 @@ export default function Tracking() {
         lng = override.lng;
       }
       if (lat == null || lng == null) return null;
-      
+
       // Determine vehicle status for icon selection
       const status = v.status || 'ACTIVE';
       const needsMaintenance = v.maintenanceDue || false;
       const fuelLevel = v.fuelLevel || 100;
-      
+
       let icon = busIcon;
       if (needsMaintenance) {
         icon = busIconMaintenance;
@@ -210,9 +210,9 @@ export default function Tracking() {
       } else if (status === 'ACTIVE') {
         icon = busIconActive;
       }
-      
-      return { 
-        id: v._id, 
+
+      return {
+        id: v.id, 
         lat, 
         lng, 
         plate: v.plateNumber, 
@@ -1512,7 +1512,7 @@ export default function Tracking() {
             </div>
             <div className="space-y-2">
               {geofences.slice(0, 5).map((gf) => (
-                <div key={gf._id} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
+                <div key={gf.id} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
                   <span>{gf.name}</span>
                   <span className={gf.isActive ? 'text-green-600' : 'text-gray-400'}>{gf.isActive ? 'Active' : 'Inactive'}</span>
                 </div>

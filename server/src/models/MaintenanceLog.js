@@ -54,7 +54,7 @@ const MaintenanceLog = sequelize.define(
       defaultValue: 'MEDIUM',
     },
     partsReplaced: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     nextServiceMileage: {
