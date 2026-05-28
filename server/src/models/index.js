@@ -149,8 +149,8 @@ User.hasMany(ReportSchedule, { foreignKey: 'createdById', as: 'createdReportSche
 RouteOptimization.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 Vehicle.hasMany(RouteOptimization, { foreignKey: 'vehicleId', as: 'routeOptimizations' });
 
-RouteOptimization.belongsTo(User, { foreignKey: 'optimizedBy', as: 'optimizedBy' });
-User.hasMany(RouteOptimization, { foreignKey: 'optimizedBy', as: 'optimizedRoutes' });
+RouteOptimization.belongsTo(User, { foreignKey: 'optimizedById', as: 'optimizer' });
+User.hasMany(RouteOptimization, { foreignKey: 'optimizedById', as: 'optimizedRoutes' });
 
 // Notification associations
 Notification.belongsTo(User, { foreignKey: 'recipientId', as: 'recipient' });

@@ -128,7 +128,7 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res,
       licenseNumber: licenseNumber,
       licenseClass: (licenseClass && licenseClass !== 'null') ? licenseClass : ((licenseType && licenseType !== 'null') ? licenseType : null),
       licenseExpiry: expiry,
-      yearsOfExperience: expYears,
+      experience: expYears,
       status: status || 'ACTIVE'
     });
     
@@ -171,7 +171,7 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, re
       licenseNumber: licenseNumber,
       licenseClass: (licenseClass && licenseClass !== 'null') ? licenseClass : ((licenseType && licenseType !== 'null') ? licenseType : null),
       licenseExpiry: expiry,
-      yearsOfExperience: expYears,
+      experience: expYears,
       status
     });
     

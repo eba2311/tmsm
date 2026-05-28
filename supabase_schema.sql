@@ -458,59 +458,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ==========================================
--- 5. DRIVERS TABLE
--- ==========================================
-
-CREATE TABLE IF NOT EXISTS drivers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-
-    license_number VARCHAR(100) UNIQUE NOT NULL,
-    license_class enum_drivers_license_class,
-
-    license_expiry TIMESTAMP WITH TIME ZONE,
-
-    national_id VARCHAR(100) UNIQUE,
-
-    date_of_birth TIMESTAMP WITH TIME ZONE,
-
-    address JSONB DEFAULT '{"woreda": null, "kebele": null, "city": "Arba Minch", "region": "SNNPR"}',
-
-    experience INTEGER DEFAULT 0,
-
-    status enum_drivers_status DEFAULT 'ACTIVE',
-
-    assigned_vehicle_id UUID REFERENCES vehicles(id) ON DELETE SET NULL,
-
-    assigned_route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
-
-    operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
-
-    emergency_contact JSONB DEFAULT '{"name": null, "phone": null, "relation": null}',
-
-    salary NUMERIC(10,2) DEFAULT 0,
-
-    rating NUMERIC(2,1) DEFAULT 5,
-
-    total_trips INTEGER DEFAULT 0,
-
-    total_distance NUMERIC(10,2) DEFAULT 0,
-
-    bank_account VARCHAR(255),
-
-    bank_name VARCHAR(255),
-
-    photo TEXT DEFAULT '',
-
-    joining_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- ==========================================
--- 6. ROUTES TABLE
+-- 5. ROUTES TABLE
+-- (Must come before drivers and vehicles due to FK references)
 -- ==========================================
 
 CREATE TABLE IF NOT EXISTS routes (
@@ -539,8 +488,63 @@ CREATE TABLE IF NOT EXISTS routes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX routes_code ON routes(code);
-CREATE INDEX routes_status ON routes(status);
+CREATE UNIQUE INDEX IF NOT EXISTS routes_code ON routes(code);
+CREATE INDEX IF NOT EXISTS routes_status ON routes(status);
+
+-- ==========================================
+-- 6. DRIVERS TABLE
+-- (assigned_vehicle_id FK added via ALTER TABLE after vehicles is created)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS drivers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+
+    license_number VARCHAR(100) UNIQUE NOT NULL,
+    license_class enum_drivers_license_class,
+
+    license_expiry TIMESTAMP WITH TIME ZONE,
+
+    national_id VARCHAR(100) UNIQUE,
+
+    date_of_birth TIMESTAMP WITH TIME ZONE,
+
+    address JSONB DEFAULT '{"woreda": null, "kebele": null, "city": "Arba Minch", "region": "SNNPR"}',
+
+    experience INTEGER DEFAULT 0,
+
+    status enum_drivers_status DEFAULT 'ACTIVE',
+
+    -- NOTE: assigned_vehicle_id FK is added below via ALTER TABLE
+    -- after the vehicles table is created, to avoid circular FK issue.
+    assigned_vehicle_id UUID,
+
+    assigned_route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
+
+    operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    emergency_contact JSONB DEFAULT '{"name": null, "phone": null, "relation": null}',
+
+    salary NUMERIC(10,2) DEFAULT 0,
+
+    rating NUMERIC(2,1) DEFAULT 5,
+
+    total_trips INTEGER DEFAULT 0,
+
+    total_distance NUMERIC(10,2) DEFAULT 0,
+
+    bank_account VARCHAR(255),
+
+    bank_name VARCHAR(255),
+
+    photo TEXT DEFAULT '',
+
+    joining_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- ==========================================
 -- 7. VEHICLES TABLE
@@ -594,8 +598,26 @@ CREATE TABLE IF NOT EXISTS vehicles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX vehicles_plate_number ON vehicles(plate_number);
-CREATE INDEX vehicles_status_type ON vehicles(status, type);
+CREATE UNIQUE INDEX IF NOT EXISTS vehicles_plate_number ON vehicles(plate_number);
+CREATE INDEX IF NOT EXISTS vehicles_status_type ON vehicles(status, type);
+
+-- ==========================================
+-- 7b. ADD CROSS-REFERENCE FK: drivers.assigned_vehicle_id -> vehicles
+-- (Must run AFTER both drivers and vehicles tables exist)
+-- ==========================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'drivers_assigned_vehicle_id_fkey'
+          AND table_name = 'drivers'
+    ) THEN
+        ALTER TABLE drivers
+            ADD CONSTRAINT drivers_assigned_vehicle_id_fkey
+            FOREIGN KEY (assigned_vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- ==========================================
 -- 8. VEHICLE LOCATION HISTORY
@@ -740,7 +762,7 @@ CREATE TABLE IF NOT EXISTS route_optimizations (
 
     optimization_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
-    optimized_by UUID REFERENCES users(id),
+    optimized_by_id UUID REFERENCES users(id),
 
     notes TEXT,
 

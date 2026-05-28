@@ -25,11 +25,11 @@ const Driver = sequelize.define(
     },
     licenseClass: {
       type: DataTypes.ENUM('A', 'B', 'C', 'D', 'E', 'F'),
-      allowNull: false,
+      allowNull: true,
     },
     licenseExpiry: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     nationalId: {
       type: DataTypes.STRING,
