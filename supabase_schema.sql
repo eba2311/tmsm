@@ -49,7 +49,9 @@ END $$;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-        ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(50);
+        END IF;
         DROP TYPE user_role;
     END IF;
 END $$;
@@ -58,7 +60,9 @@ END $$;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_locale') THEN
-        ALTER TABLE users ALTER COLUMN locale TYPE VARCHAR(10);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            ALTER TABLE users ALTER COLUMN locale TYPE VARCHAR(10);
+        END IF;
         DROP TYPE user_locale;
     END IF;
 END $$;
@@ -68,160 +72,218 @@ DO $$
 BEGIN
     -- Drop old vehicle types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_type') THEN
-        ALTER TABLE vehicles ALTER COLUMN type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vehicles') THEN
+            ALTER TABLE vehicles ALTER COLUMN type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE vehicle_type;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_status') THEN
-        ALTER TABLE vehicles ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vehicles') THEN
+            ALTER TABLE vehicles ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE vehicle_status;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_type') THEN
-        ALTER TABLE vehicles ALTER COLUMN fuel_type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vehicles') THEN
+            ALTER TABLE vehicles ALTER COLUMN fuel_type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE fuel_type;
     END IF;
 
     -- Drop old route types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'route_status') THEN
-        ALTER TABLE routes ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'routes') THEN
+            ALTER TABLE routes ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE route_status;
     END IF;
 
     -- Drop old schedule types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'schedule_status') THEN
-        ALTER TABLE schedules ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schedules') THEN
+            ALTER TABLE schedules ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE schedule_status;
     END IF;
 
     -- Drop old booking types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status') THEN
-        ALTER TABLE bookings ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bookings') THEN
+            ALTER TABLE bookings ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE booking_status;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
-        ALTER TABLE bookings ALTER COLUMN payment_status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bookings') THEN
+            ALTER TABLE bookings ALTER COLUMN payment_status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payment_status;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_method') THEN
-        ALTER TABLE bookings ALTER COLUMN payment_method TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bookings') THEN
+            ALTER TABLE bookings ALTER COLUMN payment_method TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payment_method;
     END IF;
 
     -- Drop old optimization types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'optimization_status') THEN
-        ALTER TABLE route_optimizations ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'route_optimizations') THEN
+            ALTER TABLE route_optimizations ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE optimization_status;
     END IF;
 
     -- Drop old location status
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'location_status') THEN
-        ALTER TABLE vehicle_location_history ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vehicle_location_history') THEN
+            ALTER TABLE vehicle_location_history ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE location_status;
     END IF;
 
     -- Drop old drivers types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'drivers_status') THEN
-        ALTER TABLE drivers ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'drivers') THEN
+            ALTER TABLE drivers ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE drivers_status;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'drivers_license_class') THEN
-        ALTER TABLE drivers ALTER COLUMN license_class TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'drivers') THEN
+            ALTER TABLE drivers ALTER COLUMN license_class TYPE VARCHAR(50);
+        END IF;
         DROP TYPE drivers_license_class;
     END IF;
 
     -- Drop old payments types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payments_method') THEN
-        ALTER TABLE payments ALTER COLUMN method TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payments') THEN
+            ALTER TABLE payments ALTER COLUMN method TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payments_method;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payments_status') THEN
-        ALTER TABLE payments ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payments') THEN
+            ALTER TABLE payments ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payments_status;
     END IF;
 
     -- Drop old fuel_records types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_records_fuel_type') THEN
-        ALTER TABLE fuel_records ALTER COLUMN fuel_type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fuel_records') THEN
+            ALTER TABLE fuel_records ALTER COLUMN fuel_type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE fuel_records_fuel_type;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_records_unit') THEN
-        ALTER TABLE fuel_records ALTER COLUMN unit TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fuel_records') THEN
+            ALTER TABLE fuel_records ALTER COLUMN unit TYPE VARCHAR(50);
+        END IF;
         DROP TYPE fuel_records_unit;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_records_payment_method') THEN
-        ALTER TABLE fuel_records ALTER COLUMN payment_method TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fuel_records') THEN
+            ALTER TABLE fuel_records ALTER COLUMN payment_method TYPE VARCHAR(50);
+        END IF;
         DROP TYPE fuel_records_payment_method;
     END IF;
 
     -- Drop old driver_documents types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_documents_document_type') THEN
-        ALTER TABLE driver_documents ALTER COLUMN document_type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_documents') THEN
+            ALTER TABLE driver_documents ALTER COLUMN document_type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE driver_documents_document_type;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_documents_status') THEN
-        ALTER TABLE driver_documents ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_documents') THEN
+            ALTER TABLE driver_documents ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE driver_documents_status;
     END IF;
 
     -- Drop old driver_payrolls types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_payrolls_period_type') THEN
-        ALTER TABLE driver_payrolls ALTER COLUMN period_type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_payrolls') THEN
+            ALTER TABLE driver_payrolls ALTER COLUMN period_type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE driver_payrolls_period_type;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_payrolls_status') THEN
-        ALTER TABLE driver_payrolls ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_payrolls') THEN
+            ALTER TABLE driver_payrolls ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE driver_payrolls_status;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driver_payrolls_payment_method') THEN
-        ALTER TABLE driver_payrolls ALTER COLUMN payment_method TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_payrolls') THEN
+            ALTER TABLE driver_payrolls ALTER COLUMN payment_method TYPE VARCHAR(50);
+        END IF;
         DROP TYPE driver_payrolls_payment_method;
     END IF;
 
     -- Drop old geofences types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'geofences_type') THEN
-        ALTER TABLE geofences ALTER COLUMN type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'geofences') THEN
+            ALTER TABLE geofences ALTER COLUMN type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE geofences_type;
     END IF;
 
     -- Drop old payment_tracking types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_tracking_currency') THEN
-        ALTER TABLE payment_tracking ALTER COLUMN currency TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_tracking') THEN
+            ALTER TABLE payment_tracking ALTER COLUMN currency TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payment_tracking_currency;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_tracking_method') THEN
-        ALTER TABLE payment_tracking ALTER COLUMN method TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_tracking') THEN
+            ALTER TABLE payment_tracking ALTER COLUMN method TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payment_tracking_method;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_tracking_status') THEN
-        ALTER TABLE payment_tracking ALTER COLUMN status TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_tracking') THEN
+            ALTER TABLE payment_tracking ALTER COLUMN status TYPE VARCHAR(50);
+        END IF;
         DROP TYPE payment_tracking_status;
     END IF;
 
     -- Drop old report_schedules types
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_schedules_report_type') THEN
-        ALTER TABLE report_schedules ALTER COLUMN report_type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'report_schedules') THEN
+            ALTER TABLE report_schedules ALTER COLUMN report_type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE report_schedules_report_type;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_schedules_schedule_type') THEN
-        ALTER TABLE report_schedules ALTER COLUMN schedule_type TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'report_schedules') THEN
+            ALTER TABLE report_schedules ALTER COLUMN schedule_type TYPE VARCHAR(50);
+        END IF;
         DROP TYPE report_schedules_schedule_type;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_schedules_format') THEN
-        ALTER TABLE report_schedules ALTER COLUMN format TYPE VARCHAR(50);
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'report_schedules') THEN
+            ALTER TABLE report_schedules ALTER COLUMN format TYPE VARCHAR(50);
+        END IF;
         DROP TYPE report_schedules_format;
     END IF;
 END $$;
