@@ -56,8 +56,8 @@ export default function AuditLogs() {
           </h3>
           <div className="space-y-3">
             {stats.actionStats?.slice(0, 4).map(s => (
-              <div key={s._id} className="flex items-center justify-between">
-                <span className="text-xs text-gray-500 font-medium">{s._id}</span>
+              <div key={s.id} className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">{s.id}</span>
                 <span className="text-xs font-bold text-sidebar">{s.count}</span>
               </div>
             ))}
@@ -129,7 +129,7 @@ export default function AuditLogs() {
                 </tr>
               )}
               {logsData.data?.map((log) => (
-                <tr key={log._id} className="hover:bg-gray-50/50 transition-colors">
+                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="py-4 px-4">
                     <p className="font-medium text-sidebar">{format(new Date(log.timestamp), 'MMM dd, HH:mm:ss')}</p>
                     <p className="text-[10px] text-gray-400">{format(new Date(log.timestamp), 'yyyy')}</p>

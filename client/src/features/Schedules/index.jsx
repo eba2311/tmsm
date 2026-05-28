@@ -150,7 +150,7 @@ export default function Schedules() {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s._id}>
+                <tr key={s.id}>
                   <td className="font-medium flex items-center gap-2">
                     <MapPin className="w-3.5 h-3.5 text-primary" />
                     {s.route?.name}
@@ -185,7 +185,7 @@ export default function Schedules() {
                       <select
                         className="input !py-1.5 text-xs min-w-[140px]"
                         value={s.status}
-                        onChange={(e) => statusMut.mutate({ id: s._id, status: e.target.value })}
+                        onChange={(e) => statusMut.mutate({ id: s.id, status: e.target.value })}
                         disabled={statusMut.isPending}
                         aria-label="Change schedule status"
                       >
@@ -216,7 +216,7 @@ export default function Schedules() {
             <select className="input" value={form.route} onChange={(e) => setForm({ ...form, route: e.target.value })}>
               <option value="">Select route</option>
               {routes.map((r) => (
-                <option key={r._id} value={r._id}>
+                <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
               ))}
@@ -224,7 +224,7 @@ export default function Schedules() {
             <select className="input" value={form.vehicle} onChange={(e) => setForm({ ...form, vehicle: e.target.value })}>
               <option value="">Select vehicle</option>
               {vehicles.map((v) => (
-                <option key={v._id} value={v._id}>
+                <option key={v.id} value={v.id}>
                   {v.plateNumber} — {v.type}
                 </option>
               ))}
@@ -232,7 +232,7 @@ export default function Schedules() {
             <select className="input" value={form.driver} onChange={(e) => setForm({ ...form, driver: e.target.value })}>
               <option value="">Select driver</option>
               {drivers.map((d) => (
-                <option key={d._id} value={d._id}>
+                <option key={d.id} value={d.id}>
                   {driverLabel(d)} — {d.licenseNumber}
                 </option>
               ))}
