@@ -89,11 +89,11 @@ const Vehicle = sequelize.define(
       defaultValue: false,
     },
     currentLocation: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: { type: 'Point', coordinates: [37.5543, 6.0333] },
     },
     documents: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     image: {
