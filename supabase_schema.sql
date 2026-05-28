@@ -1897,155 +1897,206 @@ $$ LANGUAGE plpgsql;
 -- 27. TRIGGERS
 -- ==========================================
 
-DO $$ BEGIN
-    CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+        CREATE TRIGGER update_users_updated_at
+        BEFORE UPDATE ON users
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_drivers_updated_at
-    BEFORE UPDATE ON drivers
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'drivers') THEN
+        CREATE TRIGGER update_drivers_updated_at
+        BEFORE UPDATE ON drivers
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_routes_updated_at
-    BEFORE UPDATE ON routes
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'routes') THEN
+        CREATE TRIGGER update_routes_updated_at
+        BEFORE UPDATE ON routes
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_vehicles_updated_at
-    BEFORE UPDATE ON vehicles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vehicles') THEN
+        CREATE TRIGGER update_vehicles_updated_at
+        BEFORE UPDATE ON vehicles
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_schedules_updated_at
-    BEFORE UPDATE ON schedules
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schedules') THEN
+        CREATE TRIGGER update_schedules_updated_at
+        BEFORE UPDATE ON schedules
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_bookings_updated_at
-    BEFORE UPDATE ON bookings
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bookings') THEN
+        CREATE TRIGGER update_bookings_updated_at
+        BEFORE UPDATE ON bookings
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_route_optimizations_updated_at
-    BEFORE UPDATE ON route_optimizations
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'route_optimizations') THEN
+        CREATE TRIGGER update_route_optimizations_updated_at
+        BEFORE UPDATE ON route_optimizations
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_maintenance_logs_updated_at
-    BEFORE UPDATE ON maintenance_logs
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'maintenance_logs') THEN
+        CREATE TRIGGER update_maintenance_logs_updated_at
+        BEFORE UPDATE ON maintenance_logs
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_notifications_updated_at
-    BEFORE UPDATE ON notifications
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notifications') THEN
+        CREATE TRIGGER update_notifications_updated_at
+        BEFORE UPDATE ON notifications
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_payments_updated_at
-    BEFORE UPDATE ON payments
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payments') THEN
+        CREATE TRIGGER update_payments_updated_at
+        BEFORE UPDATE ON payments
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_fuel_records_updated_at
-    BEFORE UPDATE ON fuel_records
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fuel_records') THEN
+        CREATE TRIGGER update_fuel_records_updated_at
+        BEFORE UPDATE ON fuel_records
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_driver_documents_updated_at
-    BEFORE UPDATE ON driver_documents
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_documents') THEN
+        CREATE TRIGGER update_driver_documents_updated_at
+        BEFORE UPDATE ON driver_documents
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_driver_ratings_updated_at
-    BEFORE UPDATE ON driver_ratings
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_ratings') THEN
+        CREATE TRIGGER update_driver_ratings_updated_at
+        BEFORE UPDATE ON driver_ratings
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_driver_payrolls_updated_at
-    BEFORE UPDATE ON driver_payrolls
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'driver_payrolls') THEN
+        CREATE TRIGGER update_driver_payrolls_updated_at
+        BEFORE UPDATE ON driver_payrolls
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_geofences_updated_at
-    BEFORE UPDATE ON geofences
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'geofences') THEN
+        CREATE TRIGGER update_geofences_updated_at
+        BEFORE UPDATE ON geofences
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_payment_tracking_updated_at
-    BEFORE UPDATE ON payment_tracking
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_tracking') THEN
+        CREATE TRIGGER update_payment_tracking_updated_at
+        BEFORE UPDATE ON payment_tracking
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TRIGGER update_report_schedules_updated_at
-    BEFORE UPDATE ON report_schedules
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'report_schedules') THEN
+        CREATE TRIGGER update_report_schedules_updated_at
+        BEFORE UPDATE ON report_schedules
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
