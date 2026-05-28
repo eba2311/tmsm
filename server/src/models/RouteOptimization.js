@@ -40,15 +40,15 @@ const RouteOptimization = sequelize.define(
       },
     },
     originalStops: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     optimizedStops: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     optimizationMetrics: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         originalDistance: null,
         optimizedDistance: null,
@@ -62,7 +62,7 @@ const RouteOptimization = sequelize.define(
       },
     },
     constraints: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         maxStops: null,
         timeWindow: {

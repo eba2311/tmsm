@@ -19,7 +19,7 @@ const Geofence = sequelize.define(
       allowNull: false,
     },
     coordinates: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: false,
     },
     radius: {

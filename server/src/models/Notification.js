@@ -47,7 +47,7 @@ const Notification = sequelize.define(
       type: DataTypes.DATE,
     },
     data: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
     },
     channel: {
       type: DataTypes.ARRAY(DataTypes.ENUM('IN_APP', 'SMS', 'EMAIL', 'PUSH')),

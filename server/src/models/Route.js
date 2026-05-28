@@ -24,7 +24,7 @@ const Route = sequelize.define(
       unique: true,
     },
     origin: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {
         name: '',
@@ -33,7 +33,7 @@ const Route = sequelize.define(
       },
     },
     destination: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {
         name: '',
@@ -42,7 +42,7 @@ const Route = sequelize.define(
       },
     },
     stops: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     distance: {

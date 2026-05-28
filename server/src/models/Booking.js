@@ -39,7 +39,7 @@ const Booking = sequelize.define(
       },
     },
     passengers: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     totalAmount: {

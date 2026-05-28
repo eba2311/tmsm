@@ -18,7 +18,7 @@ const VehicleLocationHistory = sequelize.define(
       },
     },
     location: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: { type: 'Point', coordinates: [0, 0] },
     },

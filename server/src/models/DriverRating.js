@@ -40,7 +40,7 @@ const DriverRating = sequelize.define(
       },
     },
     categories: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         punctuality: null,
         professionalism: null,

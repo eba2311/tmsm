@@ -53,10 +53,10 @@ const PaymentTracking = sequelize.define(
       type: DataTypes.STRING,
     },
     gatewayResponse: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
     },
     metadata: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         phoneNumber: null,
         cardLast4: null,

@@ -46,7 +46,7 @@ const ReportSchedule = sequelize.define(
       },
     },
     filters: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         startDate: null,
         endDate: null,

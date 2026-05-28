@@ -34,11 +34,11 @@ const DriverPayroll = sequelize.define(
       allowNull: false,
     },
     bonuses: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     deductions: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: [],
     },
     tripsCompleted: {

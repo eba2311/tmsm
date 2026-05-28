@@ -49,7 +49,7 @@ const Payment = sequelize.define(
       type: DataTypes.STRING,
     },
     gatewayResponse: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
     },
     refundReason: {
       type: DataTypes.STRING,

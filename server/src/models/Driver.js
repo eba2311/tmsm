@@ -39,7 +39,7 @@ const Driver = sequelize.define(
       type: DataTypes.DATE,
     },
     address: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         woreda: null,
         kebele: null,
@@ -77,7 +77,7 @@ const Driver = sequelize.define(
       },
     },
     emergencyContact: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       defaultValue: {
         name: null,
         phone: null,
