@@ -55,7 +55,7 @@ router.get('/:id', async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     const formatted = {
-      _id: passenger.id,
+      id: passenger.id,
       name: passenger.name,
       email: passenger.email,
       phone: passenger.phone,
@@ -100,7 +100,7 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
     if (insertErr) throw insertErr;
     
     const formatted = {
-      _id: passenger.id,
+      id: passenger.id,
       name: passenger.name,
       email: passenger.email,
       phone: passenger.phone,
@@ -137,7 +137,7 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
     if (updateErr) throw updateErr;
     
     const formatted = {
-      _id: passenger.id,
+      id: passenger.id,
       name: passenger.name,
       email: passenger.email,
       phone: passenger.phone,

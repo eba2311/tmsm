@@ -58,7 +58,7 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
       routeId,
       vehicleId,
       status: 'PENDING',
-      optimizedBy: req.user.id,
+      optimizedById: req.user.id,
       notes,
       optimizationMethod: 'NEAREST_NEIGHBOR'
     });
