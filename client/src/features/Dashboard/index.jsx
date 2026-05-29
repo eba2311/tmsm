@@ -201,7 +201,7 @@ export default function Dashboard() {
                 )}
                 {canReports &&
                   topRoutes.map((r) => (
-                    <tr key={String(r._id)}>
+                    <tr key={String(r.id)}>
                       <td className="font-medium">{r.routeName}</td>
                       <td>{r.bookings}</td>
                       <td className="font-semibold">{Number(r.revenue || 0).toLocaleString()}</td>
@@ -252,7 +252,7 @@ export default function Dashboard() {
 function buildFleetPieData(fleetAgg) {
   const map = {};
   (fleetAgg || []).forEach((row) => {
-    const t = row._id?.type || 'UNKNOWN';
+    const t = row.id?.type || 'UNKNOWN';
     map[t] = (map[t] || 0) + row.count;
   });
   const entries = Object.entries(map);

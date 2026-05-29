@@ -32,9 +32,9 @@ export default function Booking() {
   });
 
   const { data: occData } = useQuery({
-    queryKey: ['schedule-occ', selected?._id],
+    queryKey: ['schedule-occ', selected?.id],
     queryFn: async () => {
-      const { data } = await api.get(`/schedules/${selected._id}/occupancy`);
+      const { data } = await api.get(`/schedules/${selected.id}/occupancy`);
       return new Set(data.data.occupied || []);
     },
     enabled: !!selected && step === 2,
@@ -53,7 +53,7 @@ export default function Booking() {
       
       // Create booking first
       const { data: b } = await api.post('/bookings', {
-        scheduleId: selected._id,
+        scheduleId: selected.id,
         passengers,
         paymentMethod,
         boardingPoint: selected.route?.origin?.name || 'Terminal',
@@ -63,7 +63,7 @@ export default function Booking() {
 
       // Create payment
       const fd = new FormData();
-      fd.append('bookingId', booking._id);
+      fd.append('bookingId', booking.id);
       fd.append('method', paymentMethod);
       fd.append('amount', booking.totalAmount);
       if (evidenceFile) fd.append('receipt', evidenceFile);
@@ -73,7 +73,7 @@ export default function Booking() {
       });
       
       // Fetch updated booking with payment status
-      const { data: updatedBooking } = await api.get(`/bookings/${booking._id}`);
+      const { data: updatedBooking } = await api.get(`/bookings/${booking.id}`);
       
       return { booking: updatedBooking.data, payment: p.data };
     },
@@ -128,7 +128,7 @@ export default function Booking() {
           {list.length === 0 && <p className="text-sm text-gray-500">No schedules — seed the database.</p>}
           {list.map((s) => (
             <button
-              key={s._id}
+              key={s.id}
               type="button"
               onClick={() => {
                 setSelected(s);
