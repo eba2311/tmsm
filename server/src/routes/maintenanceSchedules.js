@@ -70,8 +70,8 @@ router.post('/', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req,
       description: description || 'Routine Maintenance',
       cost: cost ? parseFloat(cost) : null,
       startDate: startDate || new Date(),
-      endDate: startDate || new Date(),
-      status: 'PENDING',
+      endDate: null,
+      status: 'SCHEDULED',
       createdById: req.user.id
     });
 
@@ -100,8 +100,7 @@ router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (re
     await log.update({
       description,
       cost: cost ? parseFloat(cost) : null,
-      startDate: startDate,
-      endDate: startDate
+      startDate: startDate
     });
 
     const logWithVehicle = await MaintenanceLog.findByPk(log.id, {

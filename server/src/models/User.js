@@ -54,7 +54,7 @@ const User = sequelize.define(
       defaultValue: 'en',
     },
     refreshToken: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
     },
     passwordResetToken: {
       type: DataTypes.STRING,

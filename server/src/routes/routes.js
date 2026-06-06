@@ -42,12 +42,15 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/v1/routes
 router.post('/', authenticate, authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const { name, origin, destination, distance, estimatedDuration, baseFare } = req.body;
+    const { name, code, origin, destination, distance, estimatedDuration, baseFare } = req.body;
     
     if (!name) return res.status(400).json({ success: false, message: 'Route name is required' });
 
+    const routeCode = code || `RT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
     const route = await Route.create({
       name,
+      code: routeCode,
       origin: origin || null,
       destination: destination || null,
       distance: distance ? parseFloat(distance) : null,

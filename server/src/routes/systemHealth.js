@@ -1,7 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
 const { authenticate, authorize } = require('../middlewares/auth');
-const sequelize = require('../config/database');
 
 const router = express.Router();
 router.use(authenticate, authorize('SUPER_ADMIN'));
@@ -33,3 +32,4 @@ router.get('/', async (req, res, next) => {
 });
 
 module.exports = router;
+

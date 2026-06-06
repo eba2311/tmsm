@@ -50,8 +50,11 @@ const Notification = sequelize.define(
       type: DataTypes.JSONB,
     },
     channel: {
-      type: DataTypes.ARRAY(DataTypes.ENUM('IN_APP', 'SMS', 'EMAIL', 'PUSH')),
+      type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: ['IN_APP'],
+      validate: {
+        isIn: [['IN_APP', 'SMS', 'EMAIL', 'PUSH']],
+      },
     },
   },
   {

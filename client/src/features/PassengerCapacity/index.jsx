@@ -100,7 +100,7 @@ export default function PassengerCapacity() {
   })).sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
 
   const routeCapacityDistribution = routes.map(route => {
-    const routeVehicles = capacityData.filter(v => v.assignedRoute?._id === route._id);
+    const routeVehicles = capacityData.filter(v => v.assignedRoute?.id === route.id);
     const totalRouteCapacity = routeVehicles.reduce((sum, v) => sum + (v.capacity || 0), 0);
     const totalRouteOccupancy = routeVehicles.reduce((sum, v) => sum + (v.currentPassengers || 0), 0);
     return {
@@ -151,7 +151,7 @@ export default function PassengerCapacity() {
           >
             <option value="all">All Routes</option>
             {routes.map(r => (
-              <option key={r._id} value={r._id}>{r.name}</option>
+              <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
           <select 
@@ -161,7 +161,7 @@ export default function PassengerCapacity() {
           >
             <option value="all">All Vehicles</option>
             {vehicles.map(v => (
-              <option key={v._id} value={v._id}>{v.plateNumber}</option>
+              <option key={v.id} value={v.id}>{v.plateNumber}</option>
             ))}
           </select>
         </div>
@@ -231,7 +231,7 @@ export default function PassengerCapacity() {
           </h3>
           <div className="space-y-3">
             {overcrowdingAlerts.slice(0, 5).map((alert) => (
-              <div key={alert._id} className="border rounded-lg p-4 bg-red-50 border-red-200">
+              <div key={alert.id} className="border rounded-lg p-4 bg-red-50 border-red-200">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-red-800">{alert.vehicle?.plateNumber} - {alert.route?.name}</p>
@@ -303,7 +303,7 @@ export default function PassengerCapacity() {
             const capacityLevel = getCapacityLevel(occupancyPercentage);
             
             return (
-              <div key={vehicle._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div key={vehicle.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">

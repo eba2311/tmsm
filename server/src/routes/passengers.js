@@ -1,8 +1,9 @@
 // src/routes/passengers.js
 const express = require('express');
 const Joi = require('joi');
-const supabase = require('../config/supabase');
+const User = require('../models/User');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 router.use(authenticate);
@@ -19,52 +20,58 @@ const passengerSchema = Joi.object({
 router.get('/', async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
-    let query = supabase.from('users').select('id, name, email, phone, locale, role, is_active', { count: 'exact' });
-    // Only return passengers (role = PASSENGER) unless an admin requests all
+    const offset = (page - 1) * limit;
+
+    const where = {};
     if (req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'OPERATOR') {
-      query = query.eq('role', 'PASSENGER');
+      where.role = 'PASSENGER';
     }
-    if (search) query = query.ilike('name', `%${search}%`);
-    const skip = (page - 1) * limit;
-    query = query.range(skip, skip + limit - 1).order('created_at', { ascending: false });
-    const { data: passengers, count, error } = await query;
-    if (error) throw error;
-    const formatted = (passengers || []).map(p => ({
-      id: p.id,
-      name: p.name,
-      email: p.email,
-      phone: p.phone,
-      locale: p.locale,
-      role: p.role,
-      isActive: p.is_active,
-      createdAt: p.created_at
-    }));
-    res.json({ success: true, data: formatted, pagination: { total: count, page: Number(page), limit: Number(limit) } });
+    if (search) {
+      where.name = { [Op.iLike]: `%${search}%` };
+    }
+
+    const { count, rows: passengers } = await User.findAndCountAll({
+      where,
+      attributes: ['id', 'name', 'email', 'phone', 'locale', 'role', 'isActive', 'createdAt'],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({ success: true, data: passengers, pagination: { total: count, page: Number(page), limit: Number(limit), pages: Math.ceil(count / limit) } });
+  } catch (err) { next(err); }
+});
+
+// GET /api/v1/passengers/analytics
+router.get('/analytics', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+  try {
+    // Return empty array or mock data for now
+    res.json({ success: true, data: [] });
+  } catch (err) { next(err); }
+});
+
+// GET /api/v1/passengers/:id/history
+router.get('/:id/history', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+  try {
+    // Return empty array or mock data for now
+    res.json({ success: true, data: [] });
   } catch (err) { next(err); }
 });
 
 // GET /api/v1/passengers/:id
 router.get('/:id', async (req, res, next) => {
   try {
-    const { data: passenger, error } = await supabase.from('users')
-      .select('id, name, email, phone, locale, role, is_active, created_at')
-      .eq('id', req.params.id)
-      .single();
-    if (error || !passenger) return res.status(404).json({ success: false, message: 'Passenger not found' });
+    const passenger = await User.findByPk(req.params.id, {
+      attributes: ['id', 'name', 'email', 'phone', 'locale', 'role', 'isActive', 'createdAt']
+    });
+
+    if (!passenger) return res.status(404).json({ success: false, message: 'Passenger not found' });
+    
     if (passenger.role !== 'PASSENGER' && req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'OPERATOR') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
-    const formatted = {
-      id: passenger.id,
-      name: passenger.name,
-      email: passenger.email,
-      phone: passenger.phone,
-      locale: passenger.locale,
-      role: passenger.role,
-      isActive: passenger.is_active,
-      createdAt: passenger.created_at
-    };
-    res.json({ success: true, data: formatted });
+    
+    res.json({ success: true, data: passenger });
   } catch (err) { next(err); }
 });
 
@@ -80,24 +87,19 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
     }
 
     // Ensure email uniqueness
-    const { data: exists } = await supabase.from('users').select('id').eq('email', passengerEmail.toLowerCase()).maybeSingle();
-    
+    const exists = await User.findOne({ where: { email: passengerEmail.toLowerCase() } });
     if (exists) return res.status(409).json({ success: false, message: 'Email already registered' });
     
     // Insert passenger with role PASSENGER
-    const { data: passenger, error: insertErr } = await supabase.from('users')
-      .insert([{
-        name: value.name,
-        email: passengerEmail.toLowerCase(),
-        phone: value.phone || null,
-        locale: value.locale,
-        role: 'PASSENGER',
-        is_active: true
-      }])
-      .select()
-      .single();
-      
-    if (insertErr) throw insertErr;
+    const passenger = await User.create({
+      name: value.name,
+      email: passengerEmail.toLowerCase(),
+      phone: value.phone || null,
+      locale: value.locale,
+      role: 'PASSENGER',
+      password: 'DefaultPass@123',
+      isActive: true
+    });
     
     const formatted = {
       id: passenger.id,
@@ -106,8 +108,8 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
       phone: passenger.phone,
       locale: passenger.locale,
       role: passenger.role,
-      isActive: passenger.is_active,
-      createdAt: passenger.created_at
+      isActive: passenger.isActive,
+      createdAt: passenger.createdAt
     };
     res.status(201).json({ success: true, data: formatted });
   } catch (err) { next(err); }
@@ -128,13 +130,10 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
       updateData.email = value.email.toLowerCase();
     }
 
-    const { data: passenger, error: updateErr } = await supabase.from('users')
-      .update(updateData)
-      .eq('id', req.params.id)
-      .select()
-      .single();
-      
-    if (updateErr) throw updateErr;
+    let passenger = await User.findByPk(req.params.id);
+    if (!passenger) return res.status(404).json({ success: false, message: 'Passenger not found' });
+    
+    await passenger.update(updateData);
     
     const formatted = {
       id: passenger.id,
@@ -143,8 +142,8 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
       phone: passenger.phone,
       locale: passenger.locale,
       role: passenger.role,
-      isActive: passenger.is_active,
-      createdAt: passenger.created_at
+      isActive: passenger.isActive,
+      createdAt: passenger.createdAt
     };
     res.json({ success: true, data: formatted });
   } catch (err) { next(err); }
@@ -153,8 +152,10 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
 // DELETE /api/v1/passengers/:id
 router.delete('/:id', authorize('SUPER_ADMIN'), async (req, res, next) => {
   try {
-    const { error } = await supabase.from('users').delete().eq('id', req.params.id);
-    if (error) throw error;
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'Passenger not found' });
+    
+    await user.destroy();
     res.json({ success: true, message: 'Passenger deleted' });
   } catch (err) { next(err); }
 });

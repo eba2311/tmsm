@@ -1,5 +1,9 @@
 const express = require('express');
-const supabase = require('../config/supabase');
+const Route = require('../models/Route');
+const Vehicle = require('../models/Vehicle');
+const Driver = require('../models/Driver');
+const Booking = require('../models/Booking');
+const User = require('../models/User');
 const { authenticate, authorize } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -8,9 +12,13 @@ router.use(authenticate, authorize('SUPER_ADMIN', 'OPERATOR'));
 // GET /api/v1/ai-planning
 router.get('/', async (req, res, next) => {
   try {
-    const { data: routes } = await supabase.from('routes').select('id, name, distance, estimated_duration, base_fare');
-    const { data: vehicles } = await supabase.from('vehicles').select('id, plate_number, type, capacity, status').eq('status', 'ACTIVE');
-    const { data: drivers } = await supabase.from('drivers').select('id, license_number, status, users:user_id(name)').eq('status', 'ACTIVE');
+    const routes = await Route.findAll({ attributes: ['id', 'name', 'distance', 'estimatedDuration', 'baseFare'] });
+    const vehicles = await Vehicle.findAll({ where: { status: 'ACTIVE' }, attributes: ['id', 'plateNumber', 'type', 'capacity', 'status'] });
+    const drivers = await Driver.findAll({ 
+      where: { status: 'ACTIVE' }, 
+      attributes: ['id', 'licenseNumber', 'status'],
+      include: [{ model: User, as: 'user', attributes: ['name'] }]
+    });
 
     // Simple AI suggestion: pair available drivers with vehicles on routes
     const suggestions = (routes || []).map((route, i) => ({
@@ -49,13 +57,11 @@ router.post('/optimize', async (req, res, next) => {
 // GET /api/v1/ai-planning/demand-forecast
 router.get('/demand-forecast', async (req, res, next) => {
   try {
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select('created_at, schedule_id')
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (error) throw error;
+    const bookings = await Booking.findAll({
+      attributes: ['createdAt', 'scheduleId'],
+      order: [['createdAt', 'DESC']],
+      limit: 100
+    });
 
     const forecast = {
       nextWeek: { estimatedPassengers: (bookings || []).length * 2, confidence: 0.7 },

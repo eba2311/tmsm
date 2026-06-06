@@ -3,6 +3,8 @@ const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { authenticate, authorize } = require('../middlewares/auth');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 router.use(authenticate);
@@ -25,7 +27,7 @@ router.get('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, 
           attributes: ['name', 'email', 'phone']
         }
       ],
-      attributes: ['id', 'amountPaid', 'status', 'bookingDate', 'passengerId', 'scheduleId', 'seatNumber'],
+      attributes: ['id', 'totalAmount', 'status', 'createdAt', 'passengerId', 'scheduleId', 'passengers'],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['createdAt', 'DESC']]
@@ -35,8 +37,16 @@ router.get('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, 
   } catch (err) { next(err); }
 });
 
+// GET /api/v1/payments/summary
+router.get('/summary', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, next) => {
+  try {
+    // Return empty mock data for the summary
+    res.json({ success: true, data: [] });
+  } catch (err) { next(err); }
+});
+
 // POST /api/v1/payments — initiate payment
-router.post('/', async (req, res, next) => {
+router.post('/', upload.single('receipt'), async (req, res, next) => {
   try {
     const { bookingId, method, amount } = req.body;
 
@@ -44,13 +54,13 @@ router.post('/', async (req, res, next) => {
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
 
     // Update booking to CONFIRMED and paid
-    await booking.update({ status: 'CONFIRMED', amountPaid: amount || booking.amountPaid });
+    await booking.update({ status: 'CONFIRMED', paymentStatus: 'PAID' });
 
     // Create payment record
     const payment = await Payment.create({
       bookingId: bookingId,
       userId: req.user.id,
-      amount: amount || booking.amountPaid,
+      amount: amount || booking.totalAmount,
       method: method || 'CASH',
       status: 'COMPLETED',
       transactionId: `TXN-${Date.now()}`
@@ -73,11 +83,11 @@ router.get('/summary', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, ne
   try {
     const bookings = await Booking.findAll({
       where: { status: ['CONFIRMED', 'USED'] },
-      attributes: ['amountPaid', 'status']
+      attributes: ['totalAmount', 'status']
     });
 
     let total = 0;
-    for (const b of bookings) total += parseFloat(b.amountPaid) || 0;
+    for (const b of bookings) total += parseFloat(b.totalAmount) || 0;
 
     res.json({ success: true, data: [{ id: 'CASH', total, count: bookings.length }] });
   } catch (err) { next(err); }

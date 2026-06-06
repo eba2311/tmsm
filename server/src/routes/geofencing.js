@@ -10,7 +10,7 @@ router.use(authenticate);
 router.get('/zones', async (req, res, next) => {
   try {
     const zones = await Geofence.findAll({
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
     res.json({ success: true, data: zones });
   } catch (err) { next(err); }

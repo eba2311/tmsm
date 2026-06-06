@@ -38,10 +38,11 @@ router.get('/', async (req, res, next) => {
 // POST /api/v1/fuel-records
 router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const { vehicleId, quantity, costPerUnit, totalCost, date, odometerReading, previousOdometer, station, location, paymentMethod, receiptNumber, notes } = req.body;
+    const { vehicleId, quantity, costPerUnit, totalCost, date, odometerReading, previousOdometer, station, location, paymentMethod, receiptNumber, notes, fuelType } = req.body;
 
     const record = await FuelRecord.create({
-      vehicleId,
+      vehicleId: vehicleId,
+      fuelType: fuelType || 'DIESEL',
       quantity,
       costPerUnit,
       totalCost,

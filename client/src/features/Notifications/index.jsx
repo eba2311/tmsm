@@ -58,7 +58,7 @@ export default function NotificationsPage() {
               <p className="font-semibold text-sidebar">{n.title}</p>
               {n.titleAm && <p className="text-sm font-amharic text-gray-600">{n.titleAm}</p>}
               <p className="text-sm text-gray-600 mt-1">{n.message}</p>
-              <p className="text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' })}</p>
+              <p className="text-[11px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' })}</p>
             </div>
             {!n.isRead && (
               <button type="button" className="btn-primary !py-2 text-xs self-start" onClick={() => markRead.mutate(n._id)}>

@@ -44,7 +44,7 @@ router.get('/schedules', async (req, res, next) => {
           attributes: ['plateNumber', 'type']
         }
       ],
-      order: [['departureTime', 'ASC']]
+      order: [['departure_time', 'ASC']]
     });
     res.json({ success: true, data: schedules });
   } catch (err) { next(err); }

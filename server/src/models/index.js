@@ -141,6 +141,9 @@ User.hasMany(PaymentTracking, { foreignKey: 'createdById', as: 'createdPaymentTr
 PaymentTracking.belongsTo(User, { foreignKey: 'updatedById', as: 'updatedBy' });
 User.hasMany(PaymentTracking, { foreignKey: 'updatedById', as: 'updatedPaymentTrackings' });
 
+PaymentTracking.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
+Booking.hasMany(PaymentTracking, { foreignKey: 'bookingId', as: 'paymentTrackings' });
+
 // ReportSchedule associations
 ReportSchedule.belongsTo(User, { foreignKey: 'createdById', as: 'createdBy' });
 User.hasMany(ReportSchedule, { foreignKey: 'createdById', as: 'createdReportSchedules' });
@@ -151,6 +154,12 @@ Vehicle.hasMany(RouteOptimization, { foreignKey: 'vehicleId', as: 'routeOptimiza
 
 RouteOptimization.belongsTo(User, { foreignKey: 'optimizedById', as: 'optimizer' });
 User.hasMany(RouteOptimization, { foreignKey: 'optimizedById', as: 'optimizedRoutes' });
+
+RouteOptimization.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
+Driver.hasMany(RouteOptimization, { foreignKey: 'driverId', as: 'routeOptimizations' });
+
+RouteOptimization.belongsTo(Schedule, { foreignKey: 'scheduleId', as: 'schedule' });
+Schedule.hasOne(RouteOptimization, { foreignKey: 'scheduleId', as: 'routeOptimization' });
 
 // Notification associations
 Notification.belongsTo(User, { foreignKey: 'recipientId', as: 'recipient' });

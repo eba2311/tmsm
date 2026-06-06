@@ -21,7 +21,7 @@ import { Download, FileText, TrendingUp, Ticket, Bus, MapPin } from 'lucide-reac
 const COLORS = ['#1B4F8A', '#C9920A', '#2D7D3A', '#B5251A', '#8B5E3C'];
 
 function revenueLabel(row) {
-  const id = row._id;
+  const id = row.id;
   if (!id) return '—';
   if (id.day != null) return `${id.year}-${String(id.month).padStart(2, '0')}-${String(id.day).padStart(2, '0')}`;
   if (id.week != null) return `Y${id.year} W${id.week}`;
@@ -76,7 +76,7 @@ export default function Reports() {
   const pieData = useMemo(
     () =>
       bookingStats.map((b) => ({
-        name: b._id || 'UNKNOWN',
+        name: b.id || 'UNKNOWN',
         value: b.count || 0,
       })),
     [bookingStats]
@@ -217,9 +217,9 @@ export default function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {(paySummary.length ? paySummary : [{ _id: '—', count: 0, total: 0 }]).map((p, i) => (
+                {(paySummary.length ? paySummary : [{ id: '—', count: 0, total: 0 }]).map((p, i) => (
                   <tr key={i}>
-                    <td className="font-medium">{p._id}</td>
+                    <td className="font-medium">{p.id}</td>
                     <td>{p.count}</td>
                     <td className="font-semibold">{Number(p.total || 0).toLocaleString()}</td>
                   </tr>

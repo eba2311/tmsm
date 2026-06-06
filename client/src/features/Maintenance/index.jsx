@@ -91,47 +91,47 @@ export default function Maintenance() {
   const getMockMaintenanceTasks = () => {
     return [
       {
-        _id: '1',
+        id: '1',
         title: 'Oil Change - AM-3-12345',
         description: 'Regular oil change and filter replacement',
         type: 'PREVENTIVE',
         priority: 'MEDIUM',
         status: 'SCHEDULED',
         scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        vehicle: { _id: '1', plateNumber: 'AM-3-12345', model: 'Yutong ZK6122' },
+        vehicle: { id: '1', plateNumber: 'AM-3-12345', model: 'Yutong ZK6122' },
         estimatedCost: 5000,
       },
       {
-        _id: '2',
+        id: '2',
         title: 'Brake Inspection - AM-3-67890',
         description: 'Complete brake system inspection and pad replacement',
         type: 'CORRECTIVE',
         priority: 'HIGH',
         status: 'IN_PROGRESS',
         scheduledDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        vehicle: { _id: '2', plateNumber: 'AM-3-67890', model: 'Toyota HiAce' },
+        vehicle: { id: '2', plateNumber: 'AM-3-67890', model: 'Toyota HiAce' },
         estimatedCost: 8000,
       },
       {
-        _id: '3',
+        id: '3',
         title: 'Tire Rotation - AM-3-22222',
         description: 'Quarterly tire rotation and pressure check',
         type: 'PREVENTIVE',
         priority: 'LOW',
         status: 'SCHEDULED',
         scheduledDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        vehicle: { _id: '3', plateNumber: 'AM-3-22222', model: 'King Long XMQ6120' },
+        vehicle: { id: '3', plateNumber: 'AM-3-22222', model: 'King Long XMQ6120' },
         estimatedCost: 2000,
       },
       {
-        _id: '4',
+        id: '4',
         title: 'Engine Diagnostic - AM-3-12345',
         description: 'Check engine light diagnostic and repair',
         type: 'CORRECTIVE',
         priority: 'CRITICAL',
         status: 'OVERDUE',
         scheduledDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        vehicle: { _id: '1', plateNumber: 'AM-3-12345', model: 'Yutong ZK6122' },
+        vehicle: { id: '1', plateNumber: 'AM-3-12345', model: 'Yutong ZK6122' },
         estimatedCost: 15000,
       },
     ];
@@ -139,16 +139,16 @@ export default function Maintenance() {
 
   const getMockVehicles = () => {
     return [
-      { _id: '1', plateNumber: 'AM-3-12345', model: 'Yutong ZK6122' },
-      { _id: '2', plateNumber: 'AM-3-67890', model: 'Toyota HiAce' },
-      { _id: '3', plateNumber: 'AM-3-22222', model: 'King Long XMQ6120' },
+      { id: '1', plateNumber: 'AM-3-12345', model: 'Yutong ZK6122' },
+      { id: '2', plateNumber: 'AM-3-67890', model: 'Toyota HiAce' },
+      { id: '3', plateNumber: 'AM-3-22222', model: 'King Long XMQ6120' },
     ];
   };
 
   const getMockMaintenanceHistory = () => {
     return [
       {
-        _id: '1',
+        id: '1',
         title: 'Oil Change - AM-3-12345',
         description: 'Regular oil change completed successfully',
         type: 'PREVENTIVE',
@@ -158,7 +158,7 @@ export default function Maintenance() {
         actualCost: 4800,
       },
       {
-        _id: '2',
+        id: '2',
         title: 'Brake Replacement - AM-3-67890',
         description: 'Front brake pads replaced',
         type: 'CORRECTIVE',
@@ -168,7 +168,7 @@ export default function Maintenance() {
         actualCost: 7500,
       },
       {
-        _id: '3',
+        id: '3',
         title: 'AC Service - AM-3-22222',
         description: 'Air conditioning system service and recharge',
         type: 'PREVENTIVE',
@@ -183,7 +183,7 @@ export default function Maintenance() {
   const getMockUpcomingMaintenance = () => {
     return [
       {
-        _id: '1',
+        id: '1',
         title: 'Oil Change - AM-3-12345',
         type: 'PREVENTIVE',
         priority: 'MEDIUM',
@@ -192,7 +192,7 @@ export default function Maintenance() {
         estimatedCost: 5000,
       },
       {
-        _id: '3',
+        id: '3',
         title: 'Tire Rotation - AM-3-22222',
         type: 'PREVENTIVE',
         priority: 'LOW',
@@ -300,7 +300,7 @@ export default function Maintenance() {
                 >
                   <option value="">Select a vehicle...</option>
                   {vehicles.map(v => (
-                    <option key={v._id} value={v._id}>{v.plateNumber} ({v.model})</option>
+                    <option key={v.id} value={v.id}>{v.plateNumber} ({v.model})</option>
                   ))}
                 </select>
               </div>
@@ -486,7 +486,7 @@ export default function Maintenance() {
           >
             <option value="all">All Vehicles</option>
             {vehicles.map(v => (
-              <option key={v._id} value={v._id}>{v.plateNumber}</option>
+              <option key={v.id} value={v.id}>{v.plateNumber}</option>
             ))}
           </select>
         </div>
@@ -501,7 +501,7 @@ export default function Maintenance() {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {upcomingMaintenance.slice(0, 6).map((task) => (
-              <div key={task._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div key={task.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
@@ -536,7 +536,7 @@ export default function Maintenance() {
 
                 <div className="mt-3 flex gap-2">
                   <button 
-                    onClick={() => updateTaskStatus.mutate({ taskId: task._id, status: 'IN_PROGRESS' })}
+                    onClick={() => updateTaskStatus.mutate({ taskId: task.id, status: 'IN_PROGRESS' })}
                     className="btn-primary !py-1 !px-3 text-xs flex-1"
                   >
                     Start Now
@@ -570,7 +570,7 @@ export default function Maintenance() {
             </thead>
             <tbody>
               {filteredTasks.map((task) => (
-                <tr key={task._id} className="border-b hover:bg-gray-50">
+                <tr key={task.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <div>
                       <p className="font-medium">{task.type} Maintenance</p>
@@ -604,7 +604,7 @@ export default function Maintenance() {
                     <div className="flex items-center gap-2">
                       {task.status === 'SCHEDULED' && (
                         <button 
-                          onClick={() => updateTaskStatus.mutate({ taskId: task._id, status: 'IN_PROGRESS' })}
+                          onClick={() => updateTaskStatus.mutate({ taskId: task.id, status: 'IN_PROGRESS' })}
                           className="btn-primary !py-1 !px-3 text-xs"
                         >
                           Start
@@ -612,7 +612,7 @@ export default function Maintenance() {
                       )}
                       {task.status === 'IN_PROGRESS' && (
                         <button 
-                          onClick={() => updateTaskStatus.mutate({ taskId: task._id, status: 'COMPLETED' })}
+                          onClick={() => updateTaskStatus.mutate({ taskId: task.id, status: 'COMPLETED' })}
                           className="btn-primary !py-1 !px-3 text-xs"
                         >
                           Complete
@@ -638,7 +638,7 @@ export default function Maintenance() {
         </h3>
         <div className="space-y-3">
           {maintenanceHistory.slice(0, 5).map((record) => (
-            <div key={record._id} className="border rounded-lg p-4">
+            <div key={record.id} className="border rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">

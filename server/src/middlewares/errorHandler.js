@@ -3,24 +3,30 @@ const logger = require('../config/logger');
 const errorHandler = (err, req, res, next) => {
   logger.error(`[${req.method}] ${req.url} — ${err.message}`);
 
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const errors = Object.values(err.errors).map((e) => e.message);
-    return res.status(400).json({ success: false, message: 'Validation error', errors });
+  // Joi validation error (if using Joi)
+  if (err.isJoi) {
+    return res.status(400).json({ success: false, message: err.details[0].message });
   }
 
-  // Mongoose duplicate key
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
+  // Postgres duplicate key
+  if (err.code === '23505') {
+    return res.status(409).json({
+      success: false,
+      message: err.details || err.message || 'Record already exists',
+    });
+  }
+
+  // Postgres foreign key violation
+  if (err.code === '23503') {
     return res.status(400).json({
       success: false,
-      message: `${field} already exists`,
+      message: 'Referenced record does not exist',
     });
   }
 
   // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
+  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 
   const statusCode = err.statusCode || err.status || 500;

@@ -149,12 +149,15 @@ export default function Tracking() {
     enabled: showPredictiveMaintenance,
   });
 
+  const routeId = vehicles[0]?.assignedRoute?.id;
+
   useEffect(() => {
     const socket = io('/tracking', { path: '/socket.io', transports: ['websocket', 'polling'] });
 
     const onLoc = (u) => {
       setLive((prev) => ({ ...prev, [u.vehicleId]: { lat: u.lat, lng: u.lng, at: u.updatedAt } }));
     };
+
     socket.on('vehicle:location', onLoc);
     socket.on('vehicles:init', (list) => {
       const next = {};
@@ -167,11 +170,16 @@ export default function Tracking() {
       setLive((p) => ({ ...p, ...next }));
     });
 
-    const routeId = vehicles[0]?.assignedRoute?.id;
-    if (routeId) socket.emit('subscribe:route', { routeId: String(routeId) });
+    if (routeId) {
+      socket.emit('subscribe:route', { routeId: String(routeId) });
+    }
 
-    return () => socket.disconnect();
-  }, [vehicles]);
+    return () => {
+      socket.off('vehicle:location', onLoc);
+      socket.off('vehicles:init');
+      socket.disconnect();
+    };
+  }, [routeId]);
 
   // Offline detection
   useEffect(() => {

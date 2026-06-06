@@ -30,7 +30,7 @@ router.get('/', async (req, res, next) => {
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: ratings, pagination: { total: count, page: Number(page), limit: Number(limit) } });
@@ -48,14 +48,14 @@ router.post('/', async (req, res, next) => {
 
     // Create rating record
     const driverRating = await DriverRating.create({
-      driverId,
+      driverId: driverId,
       rating: parseFloat(rating),
       comment,
       passengerId: req.user.id
     });
 
     // Update driver's average rating
-    const allRatings = await DriverRating.findAll({ where: { driverId } });
+    const allRatings = await DriverRating.findAll({ where: { driverId: driverId } });
     const avgRating = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
     await driver.update({ rating: avgRating });
 

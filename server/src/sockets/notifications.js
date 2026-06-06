@@ -1,5 +1,20 @@
+const jwt = require('jsonwebtoken');
+
 function initNotificationNamespace(io) {
   const ns = io.of('/notifications');
+
+  // Socket authentication middleware
+  ns.use((socket, next) => {
+    const token = socket.handshake.auth.token || socket.handshake.headers['authorization']?.split(' ')[1];
+    if (!token) {
+      return next(new Error('Authentication error: Token missing'));
+    }
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) return next(new Error('Authentication error: Invalid token'));
+      socket.user = decoded;
+      next();
+    });
+  });
 
   ns.on('connection', (socket) => {
     const userId = socket.handshake.auth?.userId;

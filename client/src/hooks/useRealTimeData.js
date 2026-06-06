@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import api from '../lib/axios';
+import { useAuthStore } from './useAuthStore';
 
 export const useRealTimeData = (endpoint, socketEvent, queryKey, refetchInterval = 30000) => {
   const [socket, setSocket] = useState(null);
@@ -18,9 +19,11 @@ export const useRealTimeData = (endpoint, socketEvent, queryKey, refetchInterval
   });
 
   useEffect(() => {
-    const newSocket = io('/', {
+    const token = useAuthStore.getState().accessToken;
+    const newSocket = io('/tracking', {
       path: '/socket.io',
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      auth: { token }
     });
 
     newSocket.on('connect', () => {

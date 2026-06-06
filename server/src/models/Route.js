@@ -62,8 +62,11 @@ const Route = sequelize.define(
       defaultValue: 'ACTIVE',
     },
     transportType: {
-      type: DataTypes.ARRAY(DataTypes.ENUM('BUS', 'MINIBUS', 'BAJAJ', 'TAXI', 'CARGO')),
+      type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: ['BUS'],
+      validate: {
+        isIn: [['BUS', 'MINIBUS', 'BAJAJ', 'TAXI', 'CARGO']],
+      },
     },
     isIntercity: {
       type: DataTypes.BOOLEAN,

@@ -44,6 +44,10 @@ const paymentIntegrationRoutes = require('./routes/paymentIntegration');
 const paymentTrackingRoutes = require('./routes/paymentTracking');
 const driverPortalRoutes = require('./routes/driverPortal');
 const mobileRoutes = require('./routes/mobile');
+const capacityRoutes = require('./routes/capacity');
+const analyticsRoutes = require('./routes/analytics');
+const fuelRoutes = require('./routes/fuel');
+const maintenanceRoutes = require('./routes/maintenance');
 
 // Socket handlers
 const { initTrackingNamespace } = require('./sockets/tracking');
@@ -58,7 +62,7 @@ app.set('trust proxy', 1);
 // Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5177'].filter(Boolean),
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -76,11 +80,11 @@ const limiter = rateLimit({
 // Global middleware
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5177'].filter(Boolean),
   credentials: true,
 }));
 app.use(compression());
-// app.use(limiter); // Rate limiter disabled
+app.use(limiter); // Rate limiter enabled
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream }));
@@ -115,6 +119,10 @@ app.use('/api/v1/payment-integration', paymentIntegrationRoutes);
 app.use('/api/v1/payment-tracking', paymentTrackingRoutes);
 app.use('/api/v1/driver', driverPortalRoutes);
 app.use('/api/v1/mobile', mobileRoutes);
+app.use('/api/v1/capacity', capacityRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/fuel', fuelRoutes);
+app.use('/api/v1/maintenance', maintenanceRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
@@ -169,6 +177,27 @@ testConnection()
     // Sync database (create tables if they don't exist)
     await syncDatabase();
     
+    // Auto-seed admin user
+    const User = require('./models/User');
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash('Admin@1234', 12);
+    const adminExists = await User.findOne({ where: { email: 'admin@semenconnect.com' } });
+    if (!adminExists) {
+      await User.create({
+        name: 'Admin User',
+        email: 'admin@semenconnect.com',
+        password: hashed,
+        role: 'SUPER_ADMIN',
+        locale: 'en',
+        isActive: true
+      }, { hooks: false });
+      console.log('✅ Admin user auto-seeded!');
+    } else {
+      // Update existing admin password to ensure it matches
+      await adminExists.update({ password: hashed }, { hooks: false });
+      console.log('✅ Admin password reset to Admin@1234');
+    }
+
     server.listen(PORT, () => {
       logger.info(`🚀 Dabub Connect API running on http://localhost:${PORT}`);
       logger.info(`📡 Socket.IO ready`);

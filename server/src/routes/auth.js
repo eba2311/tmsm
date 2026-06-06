@@ -11,7 +11,7 @@ const router = express.Router();
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
+  password: Joi.string().min(8).required(),
   rememberMe: Joi.boolean().optional(),
 });
 
@@ -19,7 +19,10 @@ const registerSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
   phone: Joi.string().pattern(/^\+?[0-9]{9,15}$/).optional(),
-  password: Joi.string().min(6).required(),
+  password: Joi.string().min(8).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).required().messages({
+    'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    'string.min': 'Password must be at least 8 characters long',
+  }),
   role: Joi.string().valid('PASSENGER', 'AGENT').default('PASSENGER'),
   locale: Joi.string().valid('en', 'am').default('en'),
 });

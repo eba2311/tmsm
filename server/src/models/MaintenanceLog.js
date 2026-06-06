@@ -128,13 +128,13 @@ const MaintenanceLog = sequelize.define(
     underscored: true,
     indexes: [
       {
-        fields: ['vehicleId', 'startDate'],
+        fields: ['vehicle_id', 'start_date'],
       },
       {
         fields: ['status'],
       },
       {
-        fields: ['nextServiceDate'],
+        fields: ['next_service_date'],
       },
       {
         fields: ['priority'],

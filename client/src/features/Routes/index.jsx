@@ -92,7 +92,7 @@ export default function Routes_() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((r) => (
-          <div key={r._id} className="card space-y-3 animate-fade-in">
+          <div key={r.id} className="card space-y-3 animate-fade-in">
             <div className="flex items-start justify-between">
               <span className="badge-info text-[10px]">{r.code}</span>
               <span className={r.isIntercity ? 'badge-success' : 'badge-warning'}>{r.isIntercity ? 'Intercity' : 'City'}</span>

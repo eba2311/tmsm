@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './hooks/useAuthStore';
+import api from './lib/axios';
 import Layout from './components/Layout';
 import Login from './features/Auth/Login';
 import Register from './features/Auth/Register';
@@ -49,16 +50,11 @@ export default function App() {
     const tryRestore = async () => {
       if (!user && refreshToken) {
         try {
-          const { data } = await fetch('/api/v1/auth/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken }),
-          }).then((r) => r.json());
-          if (data?.accessToken) {
-            setTokens(data);
-            // fetch user
-            const me = await fetch('/api/v1/auth/me', { headers: { Authorization: `Bearer ${data.accessToken}` } }).then((r) => r.json());
-            if (me?.data) login({ user: me.data, accessToken: data.accessToken, refreshToken: data.refreshToken });
+          const { data } = await api.post('/auth/refresh', { refreshToken });
+          if (data?.data?.accessToken) {
+            setTokens(data.data);
+            const me = await api.get('/auth/me', { headers: { Authorization: `Bearer ${data.data.accessToken}` } });
+            if (me.data?.data) login({ user: me.data.data, accessToken: data.data.accessToken, refreshToken: data.data.refreshToken });
           }
         } catch (e) {
           // ignore — user will see login

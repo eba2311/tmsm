@@ -138,6 +138,8 @@ const scheduleCreateSchema = Joi.object({
   platform: Joi.string().allow('', null),
   status: Joi.string().valid('SCHEDULED', 'BOARDING', 'DEPARTED', 'IN_TRANSIT', 'ARRIVED', 'CANCELLED', 'DELAYED'),
   notes: Joi.string().allow('', null),
+  isRecurring: Joi.boolean().optional(),
+  recurringDays: Joi.array().items(Joi.string()).optional(),
 });
 
 // GET /api/v1/schedules/me/driver — logged-in driver's upcoming schedules
@@ -206,6 +208,8 @@ router.post('/', authorize('SUPER_ADMIN','OPERATOR'), async (req, res, next) => 
       platform: value.platform,
       status: value.status || 'SCHEDULED',
       notes: value.notes,
+      isRecurring: value.isRecurring || false,
+      recurringDays: value.recurringDays || [],
       operatorId: req.user.id
     });
     
@@ -231,9 +235,12 @@ router.put('/:id', authorize('SUPER_ADMIN','OPERATOR'), async (req, res, next) =
       fare: req.body.fare,
       platform: req.body.platform,
       status: req.body.status,
-      notes: req.body.notes
+      notes: req.body.notes,
+      isRecurring: req.body.isRecurring || false,
+      recurringDays: req.body.recurringDays || []
     });
     
+    await clearCache('/api/v1/schedules');
     res.json({ success: true, data: schedule });
   } catch (err) { next(err); }
 });

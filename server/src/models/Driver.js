@@ -12,7 +12,6 @@ const Driver = sequelize.define(
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
-      unique: true,
       references: {
         model: 'users',
         key: 'id',
@@ -21,10 +20,9 @@ const Driver = sequelize.define(
     licenseNumber: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     licenseClass: {
-      type: DataTypes.ENUM('A', 'B', 'C', 'D', 'E', 'F'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     licenseExpiry: {
@@ -33,10 +31,11 @@ const Driver = sequelize.define(
     },
     nationalId: {
       type: DataTypes.STRING,
-      unique: true,
+      allowNull: true,   // explicitly nullable — no unique constraint here
     },
     dateOfBirth: {
       type: DataTypes.DATE,
+      allowNull: true,
     },
     address: {
       type: DataTypes.JSONB,
@@ -57,6 +56,7 @@ const Driver = sequelize.define(
     },
     assignedVehicleId: {
       type: DataTypes.UUID,
+      allowNull: true,
       references: {
         model: 'vehicles',
         key: 'id',
@@ -64,6 +64,7 @@ const Driver = sequelize.define(
     },
     assignedRouteId: {
       type: DataTypes.UUID,
+      allowNull: true,
       references: {
         model: 'routes',
         key: 'id',
@@ -71,6 +72,7 @@ const Driver = sequelize.define(
     },
     operatorId: {
       type: DataTypes.UUID,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'id',
@@ -89,12 +91,8 @@ const Driver = sequelize.define(
       defaultValue: 0,
     },
     rating: {
-      type: DataTypes.DECIMAL(2, 1),
-      defaultValue: 5,
-      validate: {
-        min: 1,
-        max: 5,
-      },
+      type: DataTypes.DECIMAL(3, 1),
+      defaultValue: 5.0,
     },
     totalTrips: {
       type: DataTypes.INTEGER,
@@ -106,9 +104,11 @@ const Driver = sequelize.define(
     },
     bankAccount: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
     bankName: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
     photo: {
       type: DataTypes.STRING,
@@ -125,15 +125,10 @@ const Driver = sequelize.define(
     underscored: true,
     indexes: [
       {
-        unique: true,
-        fields: ['license_number'],
-      },
-      {
-        unique: true,
-        fields: ['user_id'],
-      },
-      {
         fields: ['status'],
+      },
+      {
+        fields: ['user_id'],
       },
     ],
   }

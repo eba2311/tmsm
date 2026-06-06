@@ -1,27 +1,32 @@
 const rateLimit = require('express-rate-limit');
 
+// Default rate limiter for general API endpoints
 const defaultLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many requests. Please try again later.' },
 });
 
+// Stricter rate limiter for authentication endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 10 : 1000, // relaxed in development
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' },
+  skipSuccessfulRequests: true,
 });
 
+// Rate limiter for booking endpoints
 const bookingLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  max: 20,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // limit each IP to 20 booking requests per hour
+  message: { success: false, message: 'Too many booking attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many booking requests. Please slow down.' },
 });
 
 module.exports = { defaultLimiter, authLimiter, bookingLimiter };
+

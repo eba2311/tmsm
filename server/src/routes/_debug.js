@@ -1,43 +1,84 @@
 const express = require('express');
-const supabase = require('../config/supabase');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { sequelize } = require('../config/database');
 
 const router = express.Router();
-router.use(authenticate, authorize('SUPER_ADMIN'));
 
-// GET /api/v1/debug/db
-router.get('/db', async (req, res, next) => {
+// PUBLIC diagnostic — no auth needed so you can test DB without logging in
+// GET /api/v1/debug/ping
+router.get('/ping', async (req, res) => {
   try {
-    const { data, error, count } = await supabase.from('users').select('id', { count: 'exact', head: true });
-    res.json({ success: true, data: { database: error ? 'ERROR' : 'OK', userCount: count || 0, error: error?.message } });
-  } catch (err) { next(err); }
+    const dbUrl = process.env.DATABASE_URL || '';
+    // Mask password in URL for safety
+    const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
+    await sequelize.authenticate();
+    res.json({
+      success: true,
+      database: 'CONNECTED',
+      project: maskedUrl,
+      time: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      database: 'FAILED',
+      error: err.message,
+      hint: 'Check DATABASE_URL in server/.env — make sure it matches the new Supabase project',
+    });
+  }
 });
 
-// GET /api/v1/debug/env
-router.get('/env', async (req, res, next) => {
-  res.json({
-    success: true,
-    data: {
-      NODE_ENV: process.env.NODE_ENV,
-      SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'MISSING',
-      SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? 'SET' : 'MISSING',
-      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
-      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET'
+// GET /api/v1/debug/tables — lists row counts per table
+router.get('/tables', async (req, res) => {
+  const tables = ['users', 'drivers', 'vehicles', 'routes', 'schedules', 'bookings', 'payments'];
+  const results = {};
+  for (const table of tables) {
+    try {
+      const [counts] = await sequelize.query(`SELECT COUNT(*) as count FROM "${table}"`);
+      results[table] = parseInt(counts[0].count);
+    } catch (error) {
+      results[table] = `MISSING or ERROR: ${error.message}`;
     }
-  });
+  }
+  res.json({ success: true, data: results });
 });
 
-// GET /api/v1/debug/tables
-router.get('/tables', async (req, res, next) => {
+// POST /api/v1/debug/test-driver — test driver creation directly (dev only)
+router.post('/test-driver', async (req, res) => {
   try {
-    const tables = ['users', 'drivers', 'vehicles', 'routes', 'schedules', 'bookings', 'maintenance_logs', 'audit_logs', 'route_optimizations', 'vehicle_location_history'];
-    const results = {};
-    for (const table of tables) {
-      const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
-      results[table] = error ? `ERROR: ${error.message}` : count;
-    }
-    res.json({ success: true, data: results });
-  } catch (err) { next(err); }
+    const User = require('../models/User');
+    const Driver = require('../models/Driver');
+
+    const testEmail = `test_driver_debug_${Date.now()}@tmsm.local`;
+    const user = await User.create({
+      name: 'Debug Test Driver',
+      email: testEmail,
+      password: 'TestPass@123',
+      role: 'DRIVER',
+    });
+
+    const driver = await Driver.create({
+      userId: user.id,
+      licenseNumber: `DBG-${Date.now()}`,
+      licenseClass: 'C',
+      status: 'ACTIVE',
+      salary: 5000,
+    });
+
+    // Clean up
+    await driver.destroy();
+    await user.destroy();
+
+    res.json({ success: true, message: 'Driver creation test PASSED — models and DB are working correctly' });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Driver creation test FAILED',
+      error: err.message,
+      name: err.name,
+      detail: err.errors ? err.errors.map(e => e.message) : undefined,
+      hint: 'This shows the exact error that happens when the frontend tries to add a driver',
+    });
+  }
 });
 
 module.exports = router;

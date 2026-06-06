@@ -81,7 +81,7 @@ export default function Booking() {
       setResult(payload);
       setStep(5);
       qc.invalidateQueries({ queryKey: ['schedules-booking'] });
-      qc.invalidateQueries({ queryKey: ['schedule-occ', selected?._id] });
+      qc.invalidateQueries({ queryKey: ['schedule-occ', selected?.id] });
       toast.success('Booking confirmed');
     },
     onError: (e) => {

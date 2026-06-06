@@ -1,4 +1,4 @@
-const supabase = require('../config/supabase');
+const AuditLog = require('../models/AuditLog');
 
 const auditMiddleware = (action, resource) => {
   return async (req, res, next) => {
@@ -10,11 +10,11 @@ const auditMiddleware = (action, resource) => {
         try {
           const userId = req.user?.id;
           if (userId) {
-            await supabase.from('audit_logs').insert([{
-              user_id: userId,
+            await AuditLog.create({
+              userId: userId,
               action: action,
               entity: resource,
-              entity_id: req.params.id || req.body.id || null,
+              entityId: req.params.id || req.body.id || null,
               details: {
                 method: req.method,
                 path: req.path,
@@ -25,8 +25,8 @@ const auditMiddleware = (action, resource) => {
                 errorMessage: res.statusCode >= 400 ? data : undefined,
                 userAgent: req.get('user-agent'),
               },
-              ip_address: req.ip,
-            }]);
+              ipAddress: req.ip,
+            });
           }
         } catch (error) {
           console.error('Audit log error:', error);

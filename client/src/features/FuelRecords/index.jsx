@@ -173,7 +173,7 @@ export default function FuelRecords() {
                   >
                     <option value="">Select Vehicle</option>
                     {vehicles.map((v) => (
-                      <option key={v._id} value={v._id}>
+                      <option key={v.id} value={v.id}>
                         {v.plateNumber} - {v.type}
                       </option>
                     ))}
@@ -188,7 +188,7 @@ export default function FuelRecords() {
                   >
                     <option value="">Select Driver</option>
                     {drivers.map((d) => (
-                      <option key={d._id} value={d._id}>
+                      <option key={d.id} value={d.id}>
                         {d.name}
                       </option>
                     ))}
@@ -368,7 +368,7 @@ export default function FuelRecords() {
               </tr>
             ) : (
               records.map((record) => (
-                <tr key={record._id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="p-4 text-sm text-gray-900">
                     {new Date(record.date).toLocaleDateString()}
                   </td>

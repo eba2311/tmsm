@@ -268,7 +268,7 @@ async function run() {
     };
   };
 
-  await Schedule.bulkCreate([
+  const scheduledSchedules = await Schedule.bulkCreate([
     mkSchedule(routes[0], vehicles[0], drivers[0], 0, 6, 400, 45, 'BOARDING'),
     mkSchedule(routes[1], vehicles[1], drivers[1], 0, 7, 200, 14, 'SCHEDULED'),
     mkSchedule(routes[2], vehicles[2], drivers[2], 0, 8, 180, 50, 'SCHEDULED'),
@@ -276,6 +276,54 @@ async function run() {
     mkSchedule(routes[4], vehicles[0], drivers[0], 0, 10, 100, 45, 'SCHEDULED'),
     mkSchedule(routes[0], vehicles[0], drivers[0], 1, 14, 400, 50, 'SCHEDULED'),
   ]);
+
+  // Seed demo bookings
+  const b1 = await Booking.create({
+    scheduleId: scheduledSchedules[0].id,
+    passengerId: passenger.id,
+    totalAmount: 800,
+    status: 'CONFIRMED',
+    paymentStatus: 'PAID',
+    passengers: [
+      { name: 'Demo Passenger', phone: '0911000003', seatNumber: 12 },
+      { name: 'Friend One', phone: '0911000004', seatNumber: 13 }
+    ],
+    boardingPoint: 'Arba Minch Terminal',
+    droppingPoint: 'Wolaita Sodo'
+  });
+
+  const b2 = await Booking.create({
+    scheduleId: scheduledSchedules[1].id,
+    passengerId: passenger.id,
+    totalAmount: 200,
+    status: 'CONFIRMED',
+    paymentStatus: 'PAID',
+    passengers: [
+      { name: 'Demo Passenger', phone: '0911000003', seatNumber: 4 }
+    ],
+    boardingPoint: 'Arba Minch Terminal',
+    droppingPoint: 'Hawassa Terminal'
+  });
+
+  // Seed demo payments
+  await Payment.create({
+    bookingId: b1.id,
+    userId: passenger.id,
+    amount: 800,
+    method: 'TELEBIRR',
+    status: 'COMPLETED',
+    transactionId: `TXN-TELEBIRR-${Date.now()}-1`
+  });
+
+  await Payment.create({
+    bookingId: b2.id,
+    userId: passenger.id,
+    amount: 200,
+    method: 'CBE_BIRR',
+    status: 'COMPLETED',
+    transactionId: `TXN-CBE-${Date.now()}-2`
+  });
+
 
   await Notification.bulkCreate([
     {

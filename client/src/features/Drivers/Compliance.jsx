@@ -334,7 +334,7 @@ export default function DriverCompliance() {
                   "{rate.comment || 'No comment provided.'}"
                 </p>
                 <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between text-[10px] text-gray-400">
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(rate.createdAt).toLocaleDateString()}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(rate.created_at).toLocaleDateString()}</span>
                   <button className="font-bold text-primary hover:underline uppercase">Flag Concern</button>
                 </div>
               </div>

@@ -30,7 +30,7 @@ router.get('/', async (req, res, next) => {
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: payroll, pagination: { total: count, page: Number(page), limit: Number(limit) } });
@@ -54,7 +54,7 @@ router.post('/', async (req, res, next) => {
     const netPay = (parseFloat(baseSalary) || 0) + (parseFloat(allowances) || 0) - (parseFloat(deductions) || 0);
 
     const payroll = await DriverPayroll.create({
-      driverId,
+      driverId: driverId,
       baseSalary: baseSalary || 3000,
       allowances: allowances || 500,
       deductions: deductions || 200,

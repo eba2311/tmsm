@@ -24,7 +24,7 @@ router.get('/', async (req, res, next) => {
         }
       ],
       limit: 50,
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
     res.json({ success: true, data: optimizations });
   } catch (err) { next(err); }

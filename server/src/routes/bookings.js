@@ -6,6 +6,7 @@ const User = require('../models/User');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { bookingLimiter } = require('../middlewares/rateLimiter');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 
 const router = express.Router();
 router.use(authenticate);
@@ -100,36 +101,52 @@ router.get('/:id', async (req, res, next) => {
       
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
     
+    // IDOR Protection: Passengers can only view their own bookings
+    if (req.user.role === 'PASSENGER' && booking.passengerId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You do not have access to this booking' });
+    }
+    
     res.json({ success: true, data: booking });
   } catch (err) { next(err); }
 });
 
 // POST /api/v1/bookings
 router.post('/', bookingLimiter, async (req, res, next) => {
+  const t = await sequelize.transaction();
   try {
     const { scheduleId, passengers, paymentMethod } = req.body;
 
     if (!Array.isArray(passengers) || passengers.length === 0) {
+      await t.rollback();
       return res.status(400).json({ success: false, message: 'At least one passenger with seat is required' });
     }
 
-    if (!isValidUUID(scheduleId)) return res.status(400).json({ success: false, message: 'Invalid schedule ID' });
+    if (!isValidUUID(scheduleId)) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'Invalid schedule ID' });
+    }
 
-    // 1. Get Schedule
-    const schedule = await Schedule.findByPk(scheduleId);
+    // 1. Get Schedule with row-level lock
+    const schedule = await Schedule.findByPk(scheduleId, { transaction: t, lock: t.LOCK.UPDATE });
       
-    if (!schedule) return res.status(404).json({ success: false, message: 'Schedule not found' });
+    if (!schedule) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Schedule not found' });
+    }
     if (schedule.availableSeats < passengers.length) {
+      await t.rollback();
       return res.status(400).json({ success: false, message: 'Not enough seats available' });
     }
 
     const seatNumbers = passengers.map((p) => String(p.seatNumber)).filter((n) => n != null && n !== 'undefined');
     if (seatNumbers.length !== passengers.length) {
+      await t.rollback();
       return res.status(400).json({ success: false, message: 'Each passenger must include a seatNumber' });
     }
     
     const dupSeat = seatNumbers.find((s, i) => seatNumbers.indexOf(s) !== i);
     if (dupSeat != null) {
+      await t.rollback();
       return res.status(400).json({ success: false, message: 'Duplicate seat numbers in request' });
     }
 
@@ -139,7 +156,9 @@ router.post('/', bookingLimiter, async (req, res, next) => {
         scheduleId: scheduleId,
         status: ['PENDING', 'CONFIRMED']
       },
-      attributes: ['passengers']
+      attributes: ['passengers'],
+      transaction: t,
+      lock: t.LOCK.UPDATE
     });
     
     const takenSeats = new Set();
@@ -152,6 +171,7 @@ router.post('/', bookingLimiter, async (req, res, next) => {
     });
     const clash = seatNumbers.find(s => takenSeats.has(s));
     if (clash) {
+      await t.rollback();
       return res.status(400).json({ success: false, message: `Seat ${clash} is already reserved` });
     }
 
@@ -165,15 +185,17 @@ router.post('/', bookingLimiter, async (req, res, next) => {
       totalAmount: farePerSeat * passengers.length,
       status: 'PENDING',
       paymentStatus: 'UNPAID'
-    });
-
-    const createdBookings = [booking];
+    }, { transaction: t });
 
     // 4. Update available seats
-    await schedule.update({ availableSeats: schedule.availableSeats - passengers.length });
+    await schedule.update({ availableSeats: schedule.availableSeats - passengers.length }, { transaction: t });
 
+    await t.commit();
     res.status(201).json({ success: true, data: booking });
-  } catch (err) { next(err); }
+  } catch (err) {
+    await t.rollback();
+    next(err);
+  }
 });
 
 // PATCH /api/v1/bookings/:id/cancel
@@ -212,6 +234,25 @@ router.patch('/:id/checkin', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT', 'DRIV
     await booking.update({ status: 'USED' });
       
     res.json({ success: true, data: booking });
+  } catch (err) { next(err); }
+});
+
+// GET /api/v1/bookings/:id/qr
+router.get('/:id/qr', async (req, res, next) => {
+  try {
+    if (!isValidUUID(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid id' });
+    
+    const booking = await Booking.findByPk(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    if (req.user.role === 'PASSENGER' && booking.passengerId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const qrData = JSON.stringify({ bookingId: booking.id, passengerId: booking.passengerId, status: booking.status });
+    const qrCodeImage = await QRCode.toDataURL(qrData);
+    
+    res.json({ success: true, data: { qrCode: qrCodeImage } });
   } catch (err) { next(err); }
 });
 

@@ -25,7 +25,7 @@ export default function Notifications({ onClose }) {
   async function markRead(id) {
     try {
       await axios.patch(`/notifications/${id}/read`);
-      setNotifications((s) => s.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setNotifications((s) => s.map(n => n.id === id ? { ...n, isRead: true } : n));
     } catch (e) {
       toast.error('Failed to mark read');
     }
@@ -41,11 +41,11 @@ export default function Notifications({ onClose }) {
       {!loading && notifications.length === 0 && <div className="text-sm text-gray-500">No notifications</div>}
       <ul className="space-y-2 max-h-64 overflow-auto">
         {notifications.map(n => (
-          <li key={n._id} className={`p-2 rounded border ${n.isRead ? 'bg-gray-50' : 'bg-white'}`}>
+          <li key={n.id} className={`p-2 rounded border ${n.isRead ? 'bg-gray-50' : 'bg-white'}`}>
             <div className="text-sm font-medium">{n.title}</div>
             <div className="text-xs text-gray-600">{n.message}</div>
             <div className="flex items-center justify-end mt-1">
-              {!n.isRead && <button onClick={() => markRead(n._id)} className="text-xs text-blue-600">Mark read</button>}
+              {!n.isRead && <button onClick={() => markRead(n.id)} className="text-xs text-blue-600">Mark read</button>}
             </div>
           </li>
         ))}

@@ -53,11 +53,11 @@ export default function FuelManagement() {
   // Derive alerts from fuelData
   const fuelAlerts = useMemo(() => {
     return fuelData.filter(r => (r.costPerUnit || 0) > 100 || (r.quantity || 0) > 200).map(r => ({
-      _id: r._id,
+      id: r.id,
       type: (r.costPerUnit || 0) > 100 ? 'High Fuel Cost' : 'Unusual Volume',
       message: (r.costPerUnit || 0) > 100 ? `Fuel cost per liter (${r.costPerUnit} ETB) is above threshold.` : `Large fuel volume (${r.quantity} L) detected.`,
       vehicle: r.vehicle,
-      createdAt: r.date,
+      created_at: r.date,
       severity: (r.costPerUnit || 0) > 150 ? 'high' : 'medium'
     }));
   }, [fuelData]);
@@ -97,7 +97,7 @@ export default function FuelManagement() {
   }, []).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const vehicleEfficiency = vehicles.map(vehicle => {
-    const vehicleRecords = fuelData.filter(record => record.vehicle?._id === vehicle._id || record.vehicle === vehicle._id);
+    const vehicleRecords = fuelData.filter(record => record.vehicle?.id === vehicle.id || record.vehicle === vehicle.id);
     const totalLiters = vehicleRecords.reduce((sum, r) => sum + (r.quantity || 0), 0);
     const totalDistance = vehicleRecords.reduce((sum, r) => sum + (r.distanceTraveled || 0), 0);
     return {
@@ -142,7 +142,7 @@ export default function FuelManagement() {
           >
             <option value="all">All Vehicles</option>
             {vehicles.map(v => (
-              <option key={v._id} value={v._id}>{v.plateNumber}</option>
+              <option key={v.id} value={v.id}>{v.plateNumber}</option>
             ))}
           </select>
         </div>
@@ -246,13 +246,13 @@ export default function FuelManagement() {
           </h3>
           <div className="space-y-3">
             {fuelAlerts.map((alert) => (
-              <div key={alert._id} className="border rounded-lg p-4 bg-red-50 border-red-200">
+              <div key={alert.id} className="border rounded-lg p-4 bg-red-50 border-red-200">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-red-800">{alert.type}</p>
                     <p className="text-sm text-red-600 mt-1">{alert.message}</p>
                     <p className="text-xs text-red-500 mt-2">
-                      Vehicle: {alert.vehicle?.plateNumber} • {new Date(alert.createdAt).toLocaleString()}
+                      Vehicle: {alert.vehicle?.plateNumber} • {new Date(alert.created_at).toLocaleString()}
                     </p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -318,7 +318,7 @@ export default function FuelManagement() {
                   >
                     <option value="">Select vehicle...</option>
                     {vehicles.map(v => (
-                      <option key={v._id} value={v._id}>{v.plateNumber}</option>
+                      <option key={v.id} value={v.id}>{v.plateNumber}</option>
                     ))}
                   </select>
                 </div>
@@ -331,7 +331,7 @@ export default function FuelManagement() {
                   >
                     <option value="">Select driver...</option>
                     {drivers.map(d => (
-                      <option key={d._id} value={d._id}>{d.user?.name} ({d.licenseNumber})</option>
+                      <option key={d.id} value={d.id}>{d.user?.name} ({d.licenseNumber})</option>
                     ))}
                   </select>
                 </div>
@@ -436,7 +436,7 @@ export default function FuelManagement() {
             </thead>
             <tbody>
               {fuelData.slice(0, 10).map((record) => (
-                <tr key={record._id} className="border-b hover:bg-gray-50">
+                <tr key={record.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4">
                     {new Date(record.date).toLocaleDateString()}
                   </td>

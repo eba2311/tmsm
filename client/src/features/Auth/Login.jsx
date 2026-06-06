@@ -90,7 +90,7 @@ export default function Login() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
               <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@semenconnect.et" className="input" autoComplete="email" />
+                placeholder="admin@semenconnect.com" className="input" autoComplete="email" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>

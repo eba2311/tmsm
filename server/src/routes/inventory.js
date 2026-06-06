@@ -33,7 +33,7 @@ router.get('/', async (req, res, next) => {
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: items, pagination: { total: count, page: Number(page), limit: Number(limit) } });

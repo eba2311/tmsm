@@ -1,5 +1,6 @@
 const express = require('express');
-const supabase = require('../config/supabase');
+const { Op } = require('sequelize');
+const VehicleLocationHistory = require('../models/VehicleLocationHistory');
 const { authenticate } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -9,18 +10,21 @@ router.use(authenticate);
 router.get('/:vehicleId', async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
-    let query = supabase
-      .from('vehicle_location_history')
-      .select('*')
-      .eq('vehicle_id', req.params.vehicleId)
-      .order('timestamp', { ascending: true })
-      .limit(500);
+    
+    const where = { vehicleId: req.params.vehicleId };
+    
+    if (startDate || endDate) {
+      where.timestamp = {};
+      if (startDate) where.timestamp[Op.gte] = new Date(startDate);
+      if (endDate) where.timestamp[Op.lte] = new Date(endDate);
+    }
 
-    if (startDate) query = query.gte('timestamp', startDate);
-    if (endDate) query = query.lte('timestamp', endDate);
-
-    const { data, error } = await query;
-    if (error) throw error;
+    const data = await VehicleLocationHistory.findAll({
+      where,
+      order: [['timestamp', 'ASC']],
+      limit: 500
+    });
+    
     res.json({ success: true, data: data || [] });
   } catch (err) { next(err); }
 });

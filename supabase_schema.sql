@@ -688,10 +688,10 @@ CREATE TABLE IF NOT EXISTS schedules (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX schedules_route_departure ON schedules(route_id, departure_time);
-CREATE INDEX schedules_vehicle_departure ON schedules(vehicle_id, departure_time);
-CREATE INDEX schedules_status ON schedules(status);
-CREATE INDEX schedules_departure_time ON schedules(departure_time);
+CREATE INDEX IF NOT EXISTS schedules_route_departure ON schedules(route_id, departure_time);
+CREATE INDEX IF NOT EXISTS schedules_vehicle_departure ON schedules(vehicle_id, departure_time);
+CREATE INDEX IF NOT EXISTS schedules_status ON schedules(status);
+CREATE INDEX IF NOT EXISTS schedules_departure_time ON schedules(departure_time);
 
 -- ==========================================
 -- 10. BOOKINGS TABLE
@@ -742,10 +742,10 @@ CREATE TABLE IF NOT EXISTS bookings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX bookings_booking_ref ON bookings(booking_ref);
-CREATE INDEX bookings_passenger_created ON bookings(passenger_id, created_at);
-CREATE INDEX bookings_schedule ON bookings(schedule_id);
-CREATE INDEX bookings_status_payment ON bookings(status, payment_status);
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_booking_ref ON bookings(booking_ref);
+CREATE INDEX IF NOT EXISTS bookings_passenger_created ON bookings(passenger_id, created_at);
+CREATE INDEX IF NOT EXISTS bookings_schedule ON bookings(schedule_id);
+CREATE INDEX IF NOT EXISTS bookings_status_payment ON bookings(status, payment_status);
 
 -- ==========================================
 -- 11. ROUTE OPTIMIZATIONS

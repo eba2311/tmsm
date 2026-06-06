@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, Info, AlertCircle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { useAuthStore } from '../../hooks/useAuthStore';
 
 const alertTypes = {
   SUCCESS: { icon: CheckCircle, bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-800' },
@@ -16,9 +17,11 @@ export const AlertSystem = () => {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const newSocket = io('/', {
+    const token = useAuthStore.getState().accessToken;
+    const newSocket = io('/notifications', {
       path: '/socket.io',
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      auth: { token }
     });
 
     newSocket.on('alert:new', (alert) => {
@@ -26,7 +29,7 @@ export const AlertSystem = () => {
     });
 
     newSocket.on('alert:clear', (alertId) => {
-      setAlerts(prev => prev.filter(alert => alert._id !== alertId));
+      setAlerts(prev => prev.filter(alert => alert.id !== alertId));
     });
 
     setSocket(newSocket);
@@ -37,7 +40,7 @@ export const AlertSystem = () => {
   }, []);
 
   const dismissAlert = (alertId) => {
-    setAlerts(prev => prev.filter(alert => alert._id !== alertId));
+    setAlerts(prev => prev.filter(alert => alert.id !== alertId));
     if (socket) {
       socket.emit('alert:dismiss', { alertId });
     }
@@ -68,7 +71,7 @@ export const AlertSystem = () => {
 
         return (
           <div
-            key={alert._id}
+            key={alert.id}
             className={`${styles.bgColor} ${styles.borderColor} ${styles.textColor} border rounded-lg p-4 shadow-lg transform transition-all duration-300 ease-in-out`}
           >
             <div className="flex items-start gap-3">
@@ -80,7 +83,7 @@ export const AlertSystem = () => {
                   <button
                     onClick={() => {
                       qc.invalidateQueries({ queryKey: [alert.action.queryKey] });
-                      dismissAlert(alert._id);
+                      dismissAlert(alert.id);
                     }}
                     className="mt-2 text-xs font-medium underline hover:no-underline"
                   >
@@ -89,7 +92,7 @@ export const AlertSystem = () => {
                 )}
               </div>
               <button
-                onClick={() => dismissAlert(alert._id)}
+                onClick={() => dismissAlert(alert.id)}
                 className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
               >
                 <X className="w-4 h-4" />
@@ -123,9 +126,11 @@ export const useAlertSystem = () => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io('/', {
+    const token = useAuthStore.getState().accessToken;
+    const newSocket = io('/notifications', {
       path: '/socket.io',
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      auth: { token }
     });
 
     setSocket(newSocket);

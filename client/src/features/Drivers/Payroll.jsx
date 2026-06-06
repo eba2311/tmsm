@@ -145,7 +145,7 @@ export default function DriverPayroll() {
                 >
                   <option value="">Select a driver...</option>
                   {drivers.map(d => (
-                    <option key={d._id} value={d._id}>{d.user?.name} ({d.licenseNumber})</option>
+                    <option key={d.id} value={d.id}>{d.user?.name} ({d.licenseNumber})</option>
                   ))}
                 </select>
               </div>
@@ -307,7 +307,7 @@ export default function DriverPayroll() {
                 </tr>
               )}
               {payrollRecords.map((p) => (
-                <tr key={p._id} className="hover:bg-gray-50 transition-colors">
+                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
@@ -343,7 +343,7 @@ export default function DriverPayroll() {
                     <div className="flex justify-end gap-2">
                       {p.status === 'PENDING' && (
                         <button 
-                          onClick={() => approveMut.mutate(p._id)}
+                          onClick={() => approveMut.mutate(p.id)}
                           disabled={approveMut.isPending}
                           className="p-2 bg-etgreen/10 text-etgreen rounded-lg hover:bg-etgreen hover:text-white transition-all"
                           title="Approve Payroll"
@@ -353,7 +353,7 @@ export default function DriverPayroll() {
                       )}
                       {p.status === 'PROCESSED' && (
                         <button 
-                          onClick={() => payMut.mutate(p._id)}
+                          onClick={() => payMut.mutate(p.id)}
                           disabled={payMut.isPending}
                           className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary hover:text-white transition-all"
                           title="Process Payment"

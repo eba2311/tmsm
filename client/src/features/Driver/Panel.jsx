@@ -39,7 +39,7 @@ export default function DriverPanel() {
 
   const pushLocation = () => {
     const socket = socketRef.current;
-    const vId = schedules[0]?.vehicle?._id;
+    const vId = schedules[0]?.vehicle?.id;
     if (!socket || !vId) return toast.error('No vehicle on schedule');
     socket.emit('driver:location', {
       vehicleId: String(vId),
@@ -97,7 +97,7 @@ export default function DriverPanel() {
 
       <div className="grid gap-3">
         {schedules.map((s) => (
-          <div key={s._id} className="card flex flex-col md:flex-row md:items-center gap-4">
+          <div key={s.id} className="card flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1 space-y-1">
               <p className="font-semibold text-sidebar flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-primary" />
@@ -116,7 +116,7 @@ export default function DriverPanel() {
                   type="button"
                   className="btn-secondary !py-1.5 !px-3 text-xs"
                   disabled={statusMut.isPending}
-                  onClick={() => statusMut.mutate({ id: s._id, status: st })}
+                  onClick={() => statusMut.mutate({ id: s.id, status: st })}
                 >
                   {st.replace('_', ' ')}
                 </button>

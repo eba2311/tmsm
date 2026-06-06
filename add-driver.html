@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Driver to TMSM Database</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 500px; margin: 60px auto; padding: 20px; background: #f0f4f8; }
+    h2 { color: #1a3c5e; }
+    .card { background: white; border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .btn { background: #1a3c5e; color: white; border: none; padding: 14px 24px; border-radius: 10px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 16px; }
+    .btn:hover { background: #2a5580; }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+    .log { margin-top: 20px; padding: 16px; background: #0d1117; color: #58d68d; border-radius: 10px; font-family: monospace; font-size: 13px; min-height: 80px; white-space: pre-wrap; }
+    .error { color: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🚌 Add Driver — TMSM Arba Minch</h2>
+    <p style="color:#666;font-size:14px;">Click the button below to add a sample driver directly to your live Supabase database.</p>
+    <button class="btn" id="addBtn" onclick="addDriver()">➕ Add Driver Now</button>
+    <div class="log" id="log">Ready. Click the button above...</div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://ixfjermoridarypknxpr.supabase.co';
+    const SUPABASE_KEY = 'sb_secret_2p6mN8gI2Ov8AgALGG1hTw_FgvDMVvl';
+
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const log = (msg, isErr=false) => {
+      const el = document.getElementById('log');
+      el.innerHTML += `\n${isErr ? '❌ ' : '✅ '}${msg}`;
+      el.scrollTop = el.scrollHeight;
+    };
+
+    async function addDriver() {
+      const btn = document.getElementById('addBtn');
+      btn.disabled = true;
+      btn.textContent = 'Adding...';
+      document.getElementById('log').textContent = '⏳ Starting...';
+      
+      const suffix = Date.now();
+      const drivers = [
+        { name: 'Tariku Bekele',  email: `tariku_${suffix}@tmsm.local`,  phone: `091${String(suffix).slice(-7)}`, lic: `LIC-TRK-${suffix}` },
+        { name: 'Mulugeta Haile', email: `mulugeta_${suffix}@tmsm.local`, phone: `092${String(suffix).slice(-7)}`, lic: `LIC-MLG-${suffix}` },
+        { name: 'Selamawit Degu', email: `selam_${suffix}@tmsm.local`,    phone: `093${String(suffix).slice(-7)}`, lic: `LIC-SLM-${suffix}` },
+      ];
+
+      for (const d of drivers) {
+        log(`Creating user: ${d.name}...`);
+        // password123 bcrypt hash (pre-computed)
+        const { data: user, error: uErr } = await client.from('users').insert([{
+          name: d.name,
+          email: d.email,
+          phone: d.phone,
+          password: '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LnIgVkEGPaG',
+          role: 'DRIVER',
+          is_active: true
+        }]).select().single();
+
+        if (uErr) { log(`User error: ${uErr.message}`, true); continue; }
+        log(`User created: ${user.id}`);
+
+        const { data: driver, error: dErr } = await client.from('drivers').insert([{
+          user_id: user.id,
+          license_number: d.lic,
+          license_type: '3',
+          years_of_experience: 5,
+          status: 'ACTIVE'
+        }]).select().single();
+
+        if (dErr) { log(`Driver profile error: ${dErr.message}`, true); continue; }
+        log(`Driver profile created: ${driver.id}`);
+        log(`✅ ${d.name} added successfully!\n`);
+      }
+      
+      btn.textContent = '✅ Done! Reload your dashboard.';
+      log('\n🎉 ALL DONE! Reload your dashboard to see the drivers.');
+    }
+  </script>
+</body>
+</html>

@@ -71,7 +71,7 @@ const Schedule = sequelize.define(
       defaultValue: false,
     },
     recurringDays: {
-      type: DataTypes.ARRAY(DataTypes.ENUM('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')),
+      type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: [],
     },
     notes: {

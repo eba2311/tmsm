@@ -47,9 +47,9 @@ export default function Passenger() {
   });
 
   const { data: passengerHistory = [] } = useQuery({
-    queryKey: ['passenger-history', selectedPassenger?._id],
+    queryKey: ['passenger-history', selectedPassenger?.id],
     queryFn: async () => {
-      const { data } = await api.get(`/passengers/${selectedPassenger?._id}/history`);
+      const { data } = await api.get(`/passengers/${selectedPassenger?.id}/history`);
       return data.data || [];
     },
     enabled: !!selectedPassenger && activeTab === 'history',
@@ -66,7 +66,7 @@ export default function Passenger() {
   });
 
   const updateMut = useMutation({
-    mutationFn: () => api.put(`/passengers/${selectedPassenger?._id}`, form),
+    mutationFn: () => api.put(`/passengers/${selectedPassenger?.id}`, form),
     onSuccess: () => {
       toast.success('Passenger updated');
       qc.invalidateQueries({ queryKey: ['passengers'] });
@@ -245,7 +245,7 @@ export default function Passenger() {
               <p className="text-center text-gray-500 py-8">No travel history found</p>
             ) : (
               passengerHistory.map((history) => (
-                <div key={history._id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={history.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <MapPin className="w-5 h-5 text-primary" />
                     <div>
@@ -273,7 +273,7 @@ export default function Passenger() {
       {viewMode === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((p) => (
-            <div key={p._id} className="card space-y-3 animate-fade-in">
+            <div key={p.id} className="card space-y-3 animate-fade-in">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-300 flex items-center justify-center text-white font-bold text-lg">
@@ -321,7 +321,7 @@ export default function Passenger() {
                       <Edit className="w-3 h-3 inline mr-1" />
                       Edit
                     </button>
-                    <button onClick={() => handleDelete(p._id)} className="btn-secondary flex-1 !py-1.5 text-xs text-red-600">
+                    <button onClick={() => handleDelete(p.id)} className="btn-secondary flex-1 !py-1.5 text-xs text-red-600">
                       <Trash2 className="w-3 h-3 inline mr-1" />
                       Delete
                     </button>
@@ -350,7 +350,7 @@ export default function Passenger() {
               </thead>
               <tbody>
                 {filtered.map((p) => (
-                  <tr key={p._id}>
+                  <tr key={p.id}>
                     <td className="font-medium">{p.name}</td>
                     <td>{p.phone}</td>
                     <td>{p.email || '—'}</td>
@@ -365,7 +365,7 @@ export default function Passenger() {
                           <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded-lg hover:bg-red-10 text-red-600">
+                          <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-10 text-red-600">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
