@@ -74,14 +74,15 @@ const server = http.createServer(app);
 // Trust proxy (for Render / load-balancer deploys)
 app.set('trust proxy', 1);
 
-// Socket.IO
+// Socket.IO - build allowed origins dynamically
+const allowedOrigins = [process.env.FRONTEND_URL].filter(Boolean);
+if (process.env.NODE_ENV === 'development') {
+  allowedOrigins.push('http://localhost:5173', 'http://localhost:5177', 'http://localhost:3000');
+}
+
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL,
-      'http://localhost:5173',
-      'http://localhost:5177',
-    ].filter(Boolean),
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -100,11 +101,7 @@ const limiter = rateLimit({
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL,
-      'http://localhost:5173',
-      'http://localhost:5177',
-    ].filter(Boolean),
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -195,7 +192,7 @@ app.locals.trackingNs = trackingNs;
 app.locals.notificationsNs = notificationsNs;
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
-const PORT = parseInt(process.env.PORT, 10) || 4003;
+const PORT = parseInt(process.env.PORT, 10) || 4000;
 const { execSync } = require('child_process');
 
 // Frees a port on Windows by finding and killing the process using it
@@ -223,6 +220,16 @@ function freePort(port) {
 }
 
 const bootstrap = async () => {
+  // 0. Validate environment configuration before anything else
+  console.log('🔍 Validating environment configuration...');
+  try {
+    const { execSync } = require('child_process');
+    execSync('node scripts/validate-env.js', { stdio: 'inherit' });
+  } catch (validationErr) {
+    logger.error('❌ Environment validation failed');
+    process.exit(1);
+  }
+
   // 1. Free the port before trying to use it (handles stale nodemon processes)
   freePort(PORT);
   await new Promise(r => setTimeout(r, 800)); // Give OS time to release port
@@ -234,31 +241,35 @@ const bootstrap = async () => {
   //    Errors are caught inside syncDatabase() so server always starts.
   await syncDatabase();
 
-  // 4. Auto-seed the admin account
-  try {
-    const User = require('./models/User');
-    const bcrypt = require('bcryptjs');
-    const hashed = await bcrypt.hash('Admin@1234', 12);
-    const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } });
-    if (!admin) {
-      await User.create(
-        {
-          name: 'Admin User',
-          email: 'admin@semenconnect.com',
-          password: hashed,
-          role: 'SUPER_ADMIN',
-          locale: 'en',
-          isActive: true,
-        },
-        { hooks: false }
-      );
-      console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
-    } else {
-      await admin.update({ password: hashed }, { hooks: false });
-      console.log('✅ Admin password verified / reset (Admin@1234)');
+  // 4. Auto-seed the admin account - ONLY in development or if explicitly enabled
+  if (process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
+    try {
+      const User = require('./models/User');
+      const bcrypt = require('bcryptjs');
+      // Use ENV variable for admin password, fallback to default for dev
+      const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
+      const hashed = await bcrypt.hash(adminPassword, 12);
+      const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } });
+      if (!admin) {
+        await User.create(
+          {
+            name: 'Admin User',
+            email: 'admin@semenconnect.com',
+            password: hashed,
+            role: 'SUPER_ADMIN',
+            locale: 'en',
+            isActive: true,
+          },
+          { hooks: false }
+        );
+        console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
+      } else {
+        await admin.update({ password: hashed }, { hooks: false });
+        console.log('✅ Admin password verified / reset (Admin@1234)');
+      }
+    } catch (seedErr) {
+      console.warn('⚠️  Admin seeding skipped:', seedErr.message);
     }
-  } catch (seedErr) {
-    console.warn('⚠️  Admin seeding skipped:', seedErr.message);
   }
 
   // 5. Start HTTP server

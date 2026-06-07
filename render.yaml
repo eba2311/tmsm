@@ -4,28 +4,61 @@ services:
     env: docker
     plan: free
     branch: main
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: PORT
-        value: 4002
+        value: 4000
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        value: https://tmsm-app.onrender.com
+        fromDatabase:
+          name: tmsm
+          property: FRONTEND_URL
       - key: CORS_ORIGIN
-        value: https://tmsm-app.onrender.com
-      # Replace with your production PostgreSQL DATABASE_URL.
-      # For SSL, append ?sslmode=require to the connection string.
+        fromDatabase:
+          name: tmsm
+          property: CORS_ORIGIN
       - key: DATABASE_URL
-        value: postgresql://postgres:password@your-postgres-host:5432/tmsm
+        fromDatabase:
+          name: tmsm
+          property: DATABASE_URL
       - key: JWT_SECRET
-        value: change-this-to-a-strong-random-secret
+        fromService:
+          type: secret
+          property: JWT_SECRET
       - key: JWT_REFRESH_SECRET
-        value: change-this-to-a-different-strong-random-secret
+        fromService:
+          type: secret
+          property: JWT_REFRESH_SECRET
+      - key: SESSION_SECRET
+        fromService:
+          type: secret
+          property: SESSION_SECRET
       - key: JWT_EXPIRES_IN
-        value: 15m
+        value: 1h
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: RATE_LIMIT_WINDOW_MS
-        value: 60000
+        value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
         value: 10000
+      - key: LOG_LEVEL
+        value: info
+
+  - type: pserv
+    name: tmsm-postgres
+    env: postgres
+    plan: free
+    ipAllowList: []
+    databases:
+      - name: tmsm
+        user: postgres
+        version: "15"
+
+databases:
+  - name: tmsm
+    databaseName: tmsm
+    user: postgres
+    region: us-east-1
+

@@ -5,38 +5,56 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: tmsm
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./server
     ports:
-      - "4002:4002"
+      - "4000:4000"
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgres://postgres:secretpassword@postgres:5432/tmsm
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tmsm
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=tmsm_super_secret_jwt_key_2026
-      - FRONTEND_URL=http://localhost
-      - PORT=4002
+      - JWT_SECRET=dev_secret_jwt_key_do_not_use_in_production_1234567890abcdefghij
+      - JWT_REFRESH_SECRET=dev_refresh_secret_do_not_use_in_production_1234567890abcdef
+      - SESSION_SECRET=dev_session_secret_do_not_use_in_production_1234567890abcdef
+      - FRONTEND_URL=http://localhost:5173
+      - CORS_ORIGIN=http://localhost:5173
+      - PORT=4000
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
     build: ./client
     ports:
-      - "80:80"
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:4000/api/v1
+      - VITE_SOCKET_URL=http://localhost:4000
     depends_on:
       - backend
     restart: unless-stopped
