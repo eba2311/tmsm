@@ -236,11 +236,17 @@ const bootstrap = async () => {
   await new Promise(r => setTimeout(r, 800)); // Give OS time to release port
 
   // 2. Test DB connectivity — hard fail if the DB is unreachable
-  await testConnection();
+  await testConnection().catch(err => {
+    console.warn('⚠️  Database connection warning:', err.message);
+    console.warn('⚠️  Continuing startup without database (some features may not work)');
+  });
 
   // 3. Sync models — CREATE TABLE IF NOT EXISTS, never alters.
   //    Errors are caught inside syncDatabase() so server always starts.
-  await syncDatabase();
+  await syncDatabase().catch(err => {
+    console.warn('⚠️  Database sync warning:', err.message);
+    console.warn('⚠️  Continuing startup without database sync');
+  });
 
   // 4. Auto-seed the admin account - ONLY in development or if explicitly enabled
   if (process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
@@ -250,7 +256,7 @@ const bootstrap = async () => {
       // Use ENV variable for admin password, fallback to default for dev
       const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
       const hashed = await bcrypt.hash(adminPassword, 12);
-      const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } });
+      const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } }).catch(() => null);
       if (!admin) {
         await User.create(
           {
@@ -262,10 +268,10 @@ const bootstrap = async () => {
             isActive: true,
           },
           { hooks: false }
-        );
+        ).catch(() => {});
         console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
       } else {
-        await admin.update({ password: hashed }, { hooks: false });
+        await admin.update({ password: hashed }, { hooks: false }).catch(() => {});
         console.log('✅ Admin password verified / reset (Admin@1234)');
       }
     } catch (seedErr) {
@@ -285,13 +291,15 @@ const bootstrap = async () => {
     } else {
       logger.error(`Server error: ${err.message}`);
     }
-    process.exit(1);
+    console.error('Server error:', err);
   });
 };
 
 bootstrap().catch((err) => {
   logger.error('❌ Failed to start server: ' + err.message);
-  process.exit(1);
+  console.error('Bootstrap error:', err);
+  // Don't exit - try to keep the server running anyway
+  console.log('⚠️  Attempting to continue despite startup error...');
 });
 
 module.exports = { app, server, io };

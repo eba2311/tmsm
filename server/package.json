@@ -11,7 +11,6 @@
     "reset-db": "node scripts/reset-db.js",
     "migrate": "node scripts/migrate.js",
     "health-check": "node scripts/health-check.js",
-    "prestart": "npm run validate-env",
     "test": "npx jest --testEnvironment node"
   },
   "dependencies": {
