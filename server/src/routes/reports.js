@@ -15,13 +15,13 @@ router.get('/overview', async (req, res, next) => {
   try {
     const [totalBookings, bookings, totalVehicles, totalDrivers, activeSchedules] = await Promise.all([
       Booking.count(),
-      Booking.findAll({ where: { status: ['CONFIRMED', 'USED'] }, attributes: ['amountPaid'] }),
+      Booking.findAll({ where: { status: ['CONFIRMED', 'USED'] }, attributes: ['totalAmount'] }),
       Vehicle.count({ where: { status: 'ACTIVE' } }),
       Driver.count({ where: { status: 'ACTIVE' } }),
       Schedule.count({ where: { status: ['SCHEDULED', 'BOARDING', 'IN_TRANSIT'] } })
     ]);
 
-    let totalRevenue = bookings.reduce((sum, b) => sum + (parseFloat(b.amountPaid) || 0), 0);
+    let totalRevenue = bookings.reduce((sum, b) => sum + (parseFloat(b.totalAmount) || 0), 0);
 
     res.json({
       success: true,
@@ -46,14 +46,14 @@ router.get('/revenue', async (req, res, next) => {
     const bookings = await Booking.findAll({
       where: {
         status: ['CONFIRMED', 'USED'],
-        createdAt: { [Op.gte]: startDate }
+        created_at: { [Op.gte]: startDate }
       },
-      attributes: ['amountPaid', 'createdAt']
+      attributes: ['totalAmount', 'created_at']
     });
 
     const grouped = {};
     for (const b of bookings) {
-      const d = new Date(b.createdAt);
+      const d = new Date(b.created_at);
       let key;
       if (period === 'monthly') {
         key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -65,7 +65,7 @@ router.get('/revenue', async (req, res, next) => {
       }
 
       if (!grouped[key]) grouped[key] = { id: key, revenue: 0, count: 0 };
-      grouped[key].revenue += (parseFloat(b.amountPaid) || 0);
+      grouped[key].revenue += (parseFloat(b.totalAmount) || 0);
       grouped[key].count += 1;
     }
 
@@ -78,13 +78,13 @@ router.get('/revenue', async (req, res, next) => {
 // GET /api/v1/reports/bookings
 router.get('/bookings', async (req, res, next) => {
   try {
-    const bookings = await Booking.findAll({ attributes: ['status', 'amountPaid'] });
+    const bookings = await Booking.findAll({ attributes: ['status', 'totalAmount'] });
 
     const statsObj = {};
     for (const b of bookings) {
       if (!statsObj[b.status]) statsObj[b.status] = { id: b.status, count: 0, revenue: 0 };
       statsObj[b.status].count += 1;
-      statsObj[b.status].revenue += (parseFloat(b.amountPaid) || 0);
+      statsObj[b.status].revenue += (parseFloat(b.totalAmount) || 0);
     }
 
     res.json({ success: true, data: Object.values(statsObj) });
@@ -112,7 +112,7 @@ router.get('/routes', async (req, res, next) => {
   try {
     const bookings = await Booking.findAll({
       where: { status: ['CONFIRMED', 'USED'] },
-      attributes: ['amountPaid'],
+      attributes: ['totalAmount'],
       include: [
         {
           model: Schedule,
@@ -138,7 +138,7 @@ router.get('/routes', async (req, res, next) => {
         routeStats[rId] = { id: rId, routeName: route.name, bookings: 0, revenue: 0 };
       }
       routeStats[rId].bookings += 1;
-      routeStats[rId].revenue += (parseFloat(b.amountPaid) || 0);
+      routeStats[rId].revenue += (parseFloat(b.totalAmount) || 0);
     }
 
     const sortedData = Object.values(routeStats).sort((a, b) => b.revenue - a.revenue).slice(0, 10);

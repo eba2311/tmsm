@@ -12,7 +12,7 @@ export default function DriverCompliance() {
   const [activeTab, setActiveTab] = useState('documents');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDoc, setNewDoc] = useState({
-    driver: '',
+    driverId: '',
     documentType: 'LICENSE',
     documentNumber: '',
     expiryDate: '',
@@ -32,7 +32,14 @@ export default function DriverCompliance() {
 
   const { data: drivers = [] } = useQuery({
     queryKey: ['drivers-list'],
-    queryFn: async () => (await api.get('/drivers')).data.data || [],
+    queryFn: async () => {
+      const response = (await api.get('/drivers')).data.data || [];
+      return response.map((driver) => ({
+        ...driver,
+        id: driver.id || driver._id || driver.driverId || driver.user?.id || '',
+        displayName: driver.displayName || `${driver.user?.name || driver.name || 'Unknown'} (${driver.licenseNumber || 'No License'})`
+      }));
+    }
   });
 
   const uploadMut = useMutation({
@@ -45,7 +52,7 @@ export default function DriverCompliance() {
       qc.invalidateQueries({ queryKey: ['driver-documents'] });
       toast.success('Document uploaded successfully');
       setIsModalOpen(false);
-      setNewDoc({ driver: '', documentType: 'LICENSE', documentNumber: '', expiryDate: '', file: null });
+      setNewDoc({ driverId: '', documentType: 'LICENSE', documentNumber: '', expiryDate: '', file: null });
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Upload failed');
@@ -149,7 +156,7 @@ export default function DriverCompliance() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const fd = new FormData();
-                    fd.append('driver', newDoc.driver);
+                    fd.append('driverId', newDoc.driverId);
                     fd.append('documentType', newDoc.documentType);
                     fd.append('documentNumber', newDoc.documentNumber);
                     fd.append('expiryDate', newDoc.expiryDate);
@@ -162,13 +169,13 @@ export default function DriverCompliance() {
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Select Driver</label>
                     <select 
                       className="input"
-                      value={newDoc.driver}
-                      onChange={(e) => setNewDoc({ ...newDoc, driver: e.target.value })}
+                      value={newDoc.driverId}
+                      onChange={(e) => setNewDoc({ ...newDoc, driverId: e.target.value })}
                       required
                     >
                       <option value="">Select a driver...</option>
                       {drivers.map(d => (
-                        <option key={d._id} value={d._id}>{d.user?.name} ({d.licenseNumber})</option>
+                        <option key={d.id || d.displayName} value={d.id} disabled={!d.id}>{d.displayName}</option>
                       ))}
                     </select>
                   </div>
@@ -262,7 +269,7 @@ export default function DriverCompliance() {
                         <p className="font-bold text-sidebar">{doc.driver?.user?.name}</p>
                         <p className="text-[10px] text-gray-400">{doc.driver?.licenseNumber}</p>
                       </td>
-                      <td className="font-medium text-gray-600">{doc.type.replace('_', ' ')}</td>
+                      <td className="font-medium text-gray-600">{(doc.type || 'UNKNOWN').replace('_', ' ')}</td>
                       <td>
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase
                           ${doc.status === 'VERIFIED' ? 'bg-etgreen/10 text-etgreen' : 'bg-red-100 text-red-600'}`}>

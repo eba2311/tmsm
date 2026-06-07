@@ -13,7 +13,7 @@ export default function useSocket() {
 
     // Create sockets
     const tracking = createTrackingSocket({ accessToken });
-    const notifications = createNotificationsSocket({ userId: user._id, accessToken });
+    const notifications = createNotificationsSocket({ accessToken });
 
     trackingRef.current = tracking;
     notifRef.current = notifications;

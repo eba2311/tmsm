@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axios';
+import toast from 'react-hot-toast';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Fuel, TrendingUp, TrendingDown, AlertTriangle, Calendar, DollarSign, Gauge, Filter, Plus, Download } from 'lucide-react';
 
@@ -26,13 +27,26 @@ export default function FuelManagement() {
     queryFn: async () => {
       const { data } = await api.get('/fuel-records', { 
         params: { 
-          vehicle: selectedVehicle === 'all' ? undefined : selectedVehicle,
+          vehicleId: selectedVehicle === 'all' ? undefined : selectedVehicle,
           limit: 100
         } 
       });
       return data.data || [];
     },
   });
+
+  const normalizedFuelData = useMemo(() => {
+    return fuelData.map((record) => ({
+      ...record,
+      quantity: Number(record.quantity) || 0,
+      costPerUnit: Number(record.costPerUnit) || 0,
+      totalCost: Number(record.totalCost) || 0,
+      distanceTraveled: Number(record.distanceTraveled) || 0,
+      fuelEfficiency: Number(record.fuelEfficiency) || 0,
+      odometerReading: Number(record.odometerReading) || 0,
+      previousOdometer: Number(record.previousOdometer) || 0,
+    }));
+  }, [fuelData]);
 
   const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery({
     queryKey: ['vehicles-fuel'],
@@ -52,15 +66,15 @@ export default function FuelManagement() {
 
   // Derive alerts from fuelData
   const fuelAlerts = useMemo(() => {
-    return fuelData.filter(r => (r.costPerUnit || 0) > 100 || (r.quantity || 0) > 200).map(r => ({
+    return normalizedFuelData.filter(r => r.costPerUnit > 100 || r.quantity > 200).map(r => ({
       id: r.id,
-      type: (r.costPerUnit || 0) > 100 ? 'High Fuel Cost' : 'Unusual Volume',
-      message: (r.costPerUnit || 0) > 100 ? `Fuel cost per liter (${r.costPerUnit} ETB) is above threshold.` : `Large fuel volume (${r.quantity} L) detected.`,
+      type: r.costPerUnit > 100 ? 'High Fuel Cost' : 'Unusual Volume',
+      message: r.costPerUnit > 100 ? `Fuel cost per liter (${r.costPerUnit} ETB) is above threshold.` : `Large fuel volume (${r.quantity} L) detected.`,
       vehicle: r.vehicle,
       created_at: r.date,
-      severity: (r.costPerUnit || 0) > 150 ? 'high' : 'medium'
+      severity: r.costPerUnit > 150 ? 'high' : 'medium'
     }));
-  }, [fuelData]);
+  }, [normalizedFuelData]);
 
   const addFuelRecord = useMutation({
     mutationFn: (record) => api.post('/fuel-records', record),
@@ -68,43 +82,48 @@ export default function FuelManagement() {
       qc.invalidateQueries({ queryKey: ['fuel-consumption'] });
       setIsModalOpen(false);
       setNewRecord({ vehicle: '', driver: '', date: new Date().toISOString().slice(0, 10), fuelType: 'DIESEL', quantity: 0, costPerUnit: 0, odometerReading: 0, station: '' });
+      toast.success('Fuel record added successfully');
     },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to add fuel record');
+    }
   });
 
   // Calculate metrics
-  const totalConsumption = fuelData.reduce((sum, record) => sum + (record.liters || 0), 0);
-  const totalCost = fuelData.reduce((sum, record) => sum + (record.cost || 0), 0);
-  const avgConsumption = fuelData.length > 0 ? totalConsumption / fuelData.length : 0;
-  const efficiency = fuelData.length > 0 ? 
-    (fuelData.reduce((sum, record) => sum + (record.distance || 0), 0) / totalConsumption).toFixed(2) : 0;
+  const totalConsumption = normalizedFuelData.reduce((sum, record) => sum + record.quantity, 0);
+  const totalCost = normalizedFuelData.reduce((sum, record) => sum + record.totalCost, 0);
+  const avgConsumption = normalizedFuelData.length > 0 ? totalConsumption / normalizedFuelData.length : 0;
+  const efficiency = normalizedFuelData.length > 0 && totalConsumption > 0 ? 
+    Number(normalizedFuelData.reduce((sum, record) => sum + record.distanceTraveled, 0) / totalConsumption).toFixed(2) : '0.00';
 
   // Prepare chart data
-  const consumptionTrend = fuelData.reduce((acc, record) => {
+  const consumptionTrend = normalizedFuelData.reduce((acc, record) => {
     const date = new Date(record.date).toLocaleDateString();
     const existing = acc.find(item => item.date === date);
     if (existing) {
-      existing.consumption += record.liters || 0;
-      existing.cost += record.cost || 0;
+      existing.consumption += record.quantity;
+      existing.cost += record.totalCost;
+      existing.distance += record.distanceTraveled;
     } else {
       acc.push({
         date,
-        consumption: record.liters || 0,
-        cost: record.cost || 0,
-        distance: record.distance || 0
+        consumption: record.quantity,
+        cost: record.totalCost,
+        distance: record.distanceTraveled
       });
     }
     return acc;
   }, []).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const vehicleEfficiency = vehicles.map(vehicle => {
-    const vehicleRecords = fuelData.filter(record => record.vehicle?.id === vehicle.id || record.vehicle === vehicle.id);
-    const totalLiters = vehicleRecords.reduce((sum, r) => sum + (r.quantity || 0), 0);
-    const totalDistance = vehicleRecords.reduce((sum, r) => sum + (r.distanceTraveled || 0), 0);
+    const vehicleRecords = normalizedFuelData.filter(record => record.vehicle?.id === vehicle.id || record.vehicle === vehicle.id);
+    const totalLiters = vehicleRecords.reduce((sum, r) => sum + r.quantity, 0);
+    const totalDistance = vehicleRecords.reduce((sum, r) => sum + r.distanceTraveled, 0);
     return {
       name: vehicle.plateNumber,
       efficiency: totalLiters > 0 ? (totalDistance / totalLiters).toFixed(2) : 0,
       consumption: totalLiters,
-      cost: vehicleRecords.reduce((sum, r) => sum + (r.costPerUnit * r.quantity || 0), 0)
+      cost: vehicleRecords.reduce((sum, r) => sum + r.totalCost, 0)
     };
   });
 
@@ -295,8 +314,8 @@ export default function FuelManagement() {
               onSubmit={(e) => {
                 e.preventDefault();
                 addFuelRecord.mutate({
-                  vehicle: newRecord.vehicle,
-                  driver: newRecord.driver,
+                  vehicleId: newRecord.vehicle,
+                  driverId: newRecord.driver,
                   date: new Date(newRecord.date).toISOString(),
                   fuelType: newRecord.fuelType,
                   quantity: Number(newRecord.quantity),
@@ -435,7 +454,7 @@ export default function FuelManagement() {
               </tr>
             </thead>
             <tbody>
-              {fuelData.slice(0, 10).map((record) => (
+              {normalizedFuelData.slice(0, 10).map((record) => (
                 <tr key={record.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4">
                     {new Date(record.date).toLocaleDateString()}
@@ -446,16 +465,16 @@ export default function FuelManagement() {
                       <p className="text-xs text-gray-500">{record.vehicle?.model}</p>
                     </div>
                   </td>
-                  <td className="text-center py-3 px-4">{record.quantity?.toFixed(1) || 0} L</td>
+                  <td className="text-center py-3 px-4">{Number(record.quantity || 0).toFixed(1)} L</td>
                   <td className="text-center py-3 px-4">{((record.costPerUnit || 0) * (record.quantity || 0)).toLocaleString()}</td>
                   <td className="text-center py-3 px-4">{record.distanceTraveled || 0}</td>
                   <td className="text-center py-3 px-4">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                      (record.fuelEfficiency || 0) >= 10 ? 'bg-green-100 text-green-800' :
-                      (record.fuelEfficiency || 0) >= 7 ? 'bg-yellow-100 text-yellow-800' :
+                      Number(record.fuelEfficiency || 0) >= 10 ? 'bg-green-100 text-green-800' :
+                      Number(record.fuelEfficiency || 0) >= 7 ? 'bg-yellow-100 text-yellow-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {(record.fuelEfficiency || 0).toFixed(2)} km/L
+                      {Number(record.fuelEfficiency || 0).toFixed(2)} km/L
                     </span>
                   </td>
                   <td className="py-3 px-4">

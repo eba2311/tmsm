@@ -28,11 +28,36 @@ router.get('/', async (req, res, next) => {
 // POST /api/v1/report-schedules
 router.post('/', async (req, res, next) => {
   try {
-    const schedule = await ReportSchedule.create({
-      ...req.body,
-      status: req.body.status || 'ACTIVE'
-    });
-    res.status(201).json({ success: true, data: schedule });
+    const {
+      name,
+      description,
+      reportType,
+      scheduleType,
+      scheduleTime,
+      schedule,
+      format,
+      recipients,
+      filters,
+      status,
+    } = req.body;
+
+    const schedulePayload = {
+      name,
+      description,
+      reportType,
+      scheduleType: scheduleType || schedule?.type,
+      scheduleTime: scheduleTime || schedule?.time,
+      format,
+      recipients: Array.isArray(recipients)
+        ? recipients
+        : String(recipients || '').split(',').map((email) => email.trim()).filter(Boolean),
+      filters: filters || {},
+      status: status || 'ACTIVE',
+      createdById: req.user?.id,
+    };
+
+    const createdSchedule = await ReportSchedule.create(schedulePayload);
+    res.status(201).json({ success: true, data: createdSchedule });
   } catch (err) { next(err); }
 });
 

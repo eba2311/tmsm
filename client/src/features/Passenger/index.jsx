@@ -286,7 +286,7 @@ export default function Passenger() {
                     </p>
                   </div>
                 </div>
-                <span className={statusColors[p.status] || 'badge-gray'}>{p.status}</span>
+                <span className={statusColors[p.status] || 'badge-gray'}>{p.status || (p.isActive ? 'ACTIVE' : 'INACTIVE')}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1.5 text-gray-500">

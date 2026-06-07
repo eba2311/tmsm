@@ -4,13 +4,13 @@
   "description": "Arba Minch Transport Management System - Backend API",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon --delay 1500ms src/index.js",
     "start": "node src/index.js",
-    "seed": "node scripts/seed.js",
+    "seed": "node scripts/mock-data.js",
+    "reset-db": "node scripts/reset-db.js",
     "test": "npx jest --testEnvironment node"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.7.0",
     "compression": "^1.8.1",

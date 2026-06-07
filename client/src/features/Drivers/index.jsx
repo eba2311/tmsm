@@ -202,8 +202,9 @@ export default function Drivers() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((d) => {
-          const name = d.user?.name || '—';
+          const name = d.user?.name || 'Unknown Driver';
           const phone = d.user?.phone || '—';
+          const assignedRoute = d.assignedRoute?.name || 'No route assigned';
           return (
             <div key={d.id} className="card space-y-3 animate-fade-in">
               <div className="flex items-start justify-between">
@@ -227,11 +228,11 @@ export default function Drivers() {
                 </div>
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <Star className="w-3.5 h-3.5 text-gold" />
-                  {d.rating}/5 ({d.totalTrips} trips)
+                  {d.rating || '5.0'}/5 ({d.totalTrips || 0} trips)
                 </div>
                 <div className="flex items-center gap-1.5 text-gray-500 col-span-2">
                   <MapPin className="w-3.5 h-3.5" />
-                  {d.assignedRoute?.name || '—'}
+                  {assignedRoute}
                 </div>
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <CreditCard className="w-3.5 h-3.5" />

@@ -14,40 +14,55 @@ const logger = require('./config/logger');
 // Initialize model associations
 require('./models');
 
+// ── Safe route loader ─────────────────────────────────────────────────────────
+function safeRequire(modulePath) {
+  try {
+    return require(modulePath);
+  } catch (e) {
+    console.error(`❌ Failed to load route: ${modulePath}\n   Error: ${e.message}`);
+    // Return a dummy router so the server doesn't crash
+    const { Router } = require('express');
+    const r = Router();
+    r.all('*', (req, res) => res.status(500).json({ success: false, message: `Route module failed to load: ${modulePath}` }));
+    return r;
+  }
+}
+
 // Route imports
-const authRoutes = require('./routes/auth');
-const vehicleRoutes = require('./routes/vehicles');
-const driverRoutes = require('./routes/drivers');
-const driverDocumentRoutes = require('./routes/driverDocuments');
-const driverRatingRoutes = require('./routes/driverRatings');
-const driverPayrollRoutes = require('./routes/driverPayroll');
-const routeRoutes = require('./routes/routes');
-const routeOptimizationRoutes = require('./routes/routeOptimization');
-const bookingRoutes = require('./routes/bookings');
-const passengerRoutes = require('./routes/passengers');
-const paymentRoutes = require('./routes/payments');
-const reportRoutes = require('./routes/reports');
-const scheduleRoutes = require('./routes/schedules');
-const notificationRoutes = require('./routes/notifications');
-const fuelRecordRoutes = require('./routes/fuelRecords');
-const reportScheduleRoutes = require('./routes/reportSchedules');
-const maintenanceScheduleRoutes = require('./routes/maintenanceSchedules');
-const auditLogRoutes = require('./routes/auditLogs');
-const debugRoutes = require('./routes/_debug');
-const geofencingRoutes = require('./routes/geofencing');
-const historicalPlaybackRoutes = require('./routes/historicalPlayback');
-const inventoryRoutes = require('./routes/inventory');
-const predictiveMaintenanceRoutes = require('./routes/predictiveMaintenance');
-const aiPlanningRoutes = require('./routes/aiPlanning');
-const systemHealthRoutes = require('./routes/systemHealth');
-const paymentIntegrationRoutes = require('./routes/paymentIntegration');
-const paymentTrackingRoutes = require('./routes/paymentTracking');
-const driverPortalRoutes = require('./routes/driverPortal');
-const mobileRoutes = require('./routes/mobile');
-const capacityRoutes = require('./routes/capacity');
-const analyticsRoutes = require('./routes/analytics');
-const fuelRoutes = require('./routes/fuel');
-const maintenanceRoutes = require('./routes/maintenance');
+const authRoutes = safeRequire('./routes/auth');
+const vehicleRoutes = safeRequire('./routes/vehicles');
+const driverRoutes = safeRequire('./routes/drivers');
+const driverDocumentRoutes = safeRequire('./routes/driverDocuments');
+const driverRatingRoutes = safeRequire('./routes/driverRatings');
+const driverPayrollRoutes = safeRequire('./routes/driverPayroll');
+const routeRoutes = safeRequire('./routes/routes');
+const routeOptimizationRoutes = safeRequire('./routes/routeOptimization');
+const bookingRoutes = safeRequire('./routes/bookings');
+const passengerRoutes = safeRequire('./routes/passengers');
+const paymentRoutes = safeRequire('./routes/payments');
+const reportRoutes = safeRequire('./routes/reports');
+const scheduleRoutes = safeRequire('./routes/schedules');
+const notificationRoutes = safeRequire('./routes/notifications');
+const fuelRecordRoutes = safeRequire('./routes/fuelRecords');
+const reportScheduleRoutes = safeRequire('./routes/reportSchedules');
+const maintenanceScheduleRoutes = safeRequire('./routes/maintenanceSchedules');
+const auditLogRoutes = safeRequire('./routes/auditLogs');
+const auditMiddleware = require('./middlewares/audit');
+const debugRoutes = safeRequire('./routes/_debug');
+const geofencingRoutes = safeRequire('./routes/geofencing');
+const historicalPlaybackRoutes = safeRequire('./routes/historicalPlayback');
+const inventoryRoutes = safeRequire('./routes/inventory');
+const predictiveMaintenanceRoutes = safeRequire('./routes/predictiveMaintenance');
+const aiPlanningRoutes = safeRequire('./routes/aiPlanning');
+const systemHealthRoutes = safeRequire('./routes/systemHealth');
+const paymentIntegrationRoutes = safeRequire('./routes/paymentIntegration');
+const paymentTrackingRoutes = safeRequire('./routes/paymentTracking');
+const driverPortalRoutes = safeRequire('./routes/driverPortal');
+const mobileRoutes = safeRequire('./routes/mobile');
+const capacityRoutes = safeRequire('./routes/capacity');
+const analyticsRoutes = safeRequire('./routes/analytics');
+const fuelRoutes = safeRequire('./routes/fuel');
+const maintenanceRoutes = safeRequire('./routes/maintenance');
 
 // Socket handlers
 const { initTrackingNamespace } = require('./sockets/tracking');
@@ -56,40 +71,53 @@ const { initNotificationNamespace } = require('./sockets/notifications');
 const app = express();
 const server = http.createServer(app);
 
-// Trust the Render proxy (fixes 'Too many requests' from load balancer IP)
+// Trust proxy (for Render / load-balancer deploys)
 app.set('trust proxy', 1);
 
 // Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5177'].filter(Boolean),
+    origin: [
+      process.env.FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5177',
+    ].filter(Boolean),
     methods: ['GET', 'POST'],
     credentials: true,
   },
 });
 
-// Rate limiting (increased default to 10000 to prevent blocking)
+// Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 10000,
-  message: { success: false, message: 'Too many requests from this IP, please try again later.' },
+  message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // Global middleware
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({
-  origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5177'].filter(Boolean),
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: [
+      process.env.FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5177',
+    ].filter(Boolean),
+    credentials: true,
+  })
+);
 app.use(compression());
-app.use(limiter); // Rate limiter enabled
+app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream }));
 
-// API routes
+// Audit all authenticated API requests
+app.use('/api/v1', auditMiddleware());
+
+// ── API routes ────────────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/drivers', driverRoutes);
@@ -134,28 +162,26 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
-// Removed API landing page to ensure React frontend is served on the root route.
-
 // Swagger UI
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Serve static files (Always fallback to React frontend)
+// Serve static assets
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../../client/dist')));
 
 app.get('*', (req, res, next) => {
-  // If it's an API route that wasn't found, pass to the 404 handler
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-  // Otherwise, serve the React app
-  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+  if (req.path.startsWith('/api/')) return next();
+  const indexPath = path.join(__dirname, '../../client/dist/index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) next(); // In dev, dist may not exist — that is fine
+  });
 });
 
-// 404 handler for API routes
+// 404 for unmatched API routes
 app.use('/api/*', (req, res) => {
-  res.status(404).json({ success: false, message: 'API Route not found' });
+  res.status(404).json({ success: false, message: 'API route not found' });
 });
 
 // Error handler
@@ -168,53 +194,92 @@ const notificationsNs = initNotificationNamespace(io);
 app.locals.trackingNs = trackingNs;
 app.locals.notificationsNs = notificationsNs;
 
-// Start server
-const PORT = process.env.PORT || 4000;
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+const PORT = parseInt(process.env.PORT, 10) || 4003;
+const { execSync } = require('child_process');
 
-// Connect to PostgreSQL and start server
-testConnection()
-  .then(async () => {
-    // Sync database (create tables if they don't exist)
-    await syncDatabase();
-    
-    // Auto-seed admin user
+// Frees a port on Windows by finding and killing the process using it
+function freePort(port) {
+  try {
+    console.log(`⚡ Freeing port ${port}...`);
+    // Find PID using the port
+    const result = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8' });
+    const lines = result.trim().split('\n');
+    const pids = new Set();
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      const pid = parts[parts.length - 1];
+      if (pid && pid !== '0') pids.add(pid);
+    }
+    for (const pid of pids) {
+      try {
+        execSync(`taskkill /PID ${pid} /F`, { encoding: 'utf8' });
+        console.log(`✅ Killed process PID ${pid} that was using port ${port}`);
+      } catch (_) {}
+    }
+  } catch (_) {
+    // No process found on the port, that's fine
+  }
+}
+
+const bootstrap = async () => {
+  // 1. Free the port before trying to use it (handles stale nodemon processes)
+  freePort(PORT);
+  await new Promise(r => setTimeout(r, 800)); // Give OS time to release port
+
+  // 2. Test DB connectivity — hard fail if the DB is unreachable
+  await testConnection();
+
+  // 3. Sync models — CREATE TABLE IF NOT EXISTS, never alters.
+  //    Errors are caught inside syncDatabase() so server always starts.
+  await syncDatabase();
+
+  // 4. Auto-seed the admin account
+  try {
     const User = require('./models/User');
     const bcrypt = require('bcryptjs');
     const hashed = await bcrypt.hash('Admin@1234', 12);
-    const adminExists = await User.findOne({ where: { email: 'admin@semenconnect.com' } });
-    if (!adminExists) {
-      await User.create({
-        name: 'Admin User',
-        email: 'admin@semenconnect.com',
-        password: hashed,
-        role: 'SUPER_ADMIN',
-        locale: 'en',
-        isActive: true
-      }, { hooks: false });
-      console.log('✅ Admin user auto-seeded!');
+    const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } });
+    if (!admin) {
+      await User.create(
+        {
+          name: 'Admin User',
+          email: 'admin@semenconnect.com',
+          password: hashed,
+          role: 'SUPER_ADMIN',
+          locale: 'en',
+          isActive: true,
+        },
+        { hooks: false }
+      );
+      console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
     } else {
-      // Update existing admin password to ensure it matches
-      await adminExists.update({ password: hashed }, { hooks: false });
-      console.log('✅ Admin password reset to Admin@1234');
+      await admin.update({ password: hashed }, { hooks: false });
+      console.log('✅ Admin password verified / reset (Admin@1234)');
     }
+  } catch (seedErr) {
+    console.warn('⚠️  Admin seeding skipped:', seedErr.message);
+  }
 
-    server.listen(PORT, () => {
-      logger.info(`🚀 Dabub Connect API running on http://localhost:${PORT}`);
-      logger.info(`📡 Socket.IO ready`);
-    });
+  // 5. Start HTTP server
+  server.listen(PORT, () => {
+    logger.info(`🚀 TMSM API running → http://localhost:${PORT}`);
+    logger.info(`📡 Socket.IO ready`);
+  });
 
-    server.on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        logger.error(`Port ${PORT} is already in use. Please use a different port.`);
-        process.exit(1);
-      }
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} is still in use after freeing attempt. Please close any other terminal running the server and restart.`);
+    } else {
       logger.error(`Server error: ${err.message}`);
-      process.exit(1);
-    });
-  })
-  .catch((err) => {
-    logger.error('Failed to connect to PostgreSQL: ' + err.message);
+    }
     process.exit(1);
   });
+};
+
+bootstrap().catch((err) => {
+  logger.error('❌ Failed to start server: ' + err.message);
+  process.exit(1);
+});
 
 module.exports = { app, server, io };

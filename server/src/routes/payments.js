@@ -27,21 +27,13 @@ router.get('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, 
           attributes: ['name', 'email', 'phone']
         }
       ],
-      attributes: ['id', 'totalAmount', 'status', 'createdAt', 'passengerId', 'scheduleId', 'passengers'],
+      attributes: ['id', 'totalAmount', 'status', 'created_at', 'passengerId', 'scheduleId', 'passengers'],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: bookings, pagination: { total: count, page: Number(page), limit: Number(limit) } });
-  } catch (err) { next(err); }
-});
-
-// GET /api/v1/payments/summary
-router.get('/summary', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, next) => {
-  try {
-    // Return empty mock data for the summary
-    res.json({ success: true, data: [] });
   } catch (err) { next(err); }
 });
 
@@ -62,7 +54,7 @@ router.post('/', upload.single('receipt'), async (req, res, next) => {
       userId: req.user.id,
       amount: amount || booking.totalAmount,
       method: method || 'CASH',
-      status: 'COMPLETED',
+      status: 'SUCCESS',
       transactionId: `TXN-${Date.now()}`
     });
 

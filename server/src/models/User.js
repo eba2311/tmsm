@@ -53,6 +53,34 @@ const User = sequelize.define(
       type: DataTypes.ENUM('en', 'am'),
       defaultValue: 'en',
     },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    dateOfBirth: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    gender: {
+      type: DataTypes.ENUM('MALE', 'FEMALE', 'OTHER'),
+      allowNull: true,
+    },
+    emergencyContact: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    emergencyPhone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    totalTrips: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    status: {
+      type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED', 'BLACKLISTED'),
+      defaultValue: 'ACTIVE',
+    },
     refreshToken: {
       type: DataTypes.TEXT,
     },

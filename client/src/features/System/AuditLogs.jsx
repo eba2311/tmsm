@@ -12,7 +12,7 @@ export default function AuditLogs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data: logsData = { data: [] }, isLoading } = useQuery({
+  const { data: logsData = { data: [], pagination: { total: 0 } }, isLoading } = useQuery({
     queryKey: ['audit-logs', page, searchTerm],
     queryFn: async () => {
       const { data } = await api.get('/audit-logs', { params: { page, limit: 50, action: searchTerm || undefined } });
@@ -137,9 +137,9 @@ export default function AuditLogs() {
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold">
-                        {log.userId?.name?.[0] || 'S'}
+                        {log.user?.name?.[0] || 'S'}
                       </div>
-                      <span className="font-semibold text-sidebar">{log.userId?.name || 'System'}</span>
+                      <span className="font-semibold text-sidebar">{log.user?.name || 'System'}</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">

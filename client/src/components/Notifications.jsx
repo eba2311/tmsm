@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import axios from '../lib/axios';
+import api from '../lib/axios';
+import { useAuthStore } from '../hooks/useAuthStore';
 import toast from 'react-hot-toast';
 
 export default function Notifications({ onClose }) {
@@ -8,26 +9,60 @@ export default function Notifications({ onClose }) {
 
   useEffect(() => {
     fetchNotifications();
+
+    const handleNotificationReceived = (event) => {
+      const notification = event?.detail;
+      if (notification && notification.id) {
+        setNotifications((current) => {
+          if (current.some((n) => n.id === notification.id)) return current;
+          return [notification, ...current];
+        });
+      } else {
+        fetchNotifications();
+      }
+    };
+
+    const handleNotificationReadAll = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener('notification:received', handleNotificationReceived);
+    window.addEventListener('notification:read-all', handleNotificationReadAll);
+    return () => {
+      window.removeEventListener('notification:received', handleNotificationReceived);
+      window.removeEventListener('notification:read-all', handleNotificationReadAll);
+    };
   }, []);
 
   async function fetchNotifications() {
     setLoading(true);
+    const token = useAuthStore.getState().accessToken;
     try {
-      const res = await axios.get('/notifications');
+      if (!token) throw new Error('Not authenticated');
+      const res = await api.get('/notifications', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setNotifications(res.data.data || []);
     } catch (e) {
-      toast.error('Failed to load notifications');
+      console.error('Notifications load failed:', e?.response?.data || e.message || e);
+      toast.error(e?.response?.data?.message || e.message || 'Failed to load notifications');
     } finally {
       setLoading(false);
     }
   }
 
   async function markRead(id) {
+    const token = useAuthStore.getState().accessToken;
     try {
-      await axios.patch(`/notifications/${id}/read`);
+      if (!token) throw new Error('Not authenticated');
+      await api.patch(`/notifications/${id}/read`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setNotifications((s) => s.map(n => n.id === id ? { ...n, isRead: true } : n));
+      window.dispatchEvent(new CustomEvent('notification:read', { detail: { id } }));
     } catch (e) {
-      toast.error('Failed to mark read');
+      console.error('Mark notification read failed:', e?.response?.data || e.message || e);
+      toast.error(e?.response?.data?.message || e.message || 'Failed to mark read');
     }
   }
 

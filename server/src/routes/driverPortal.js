@@ -60,7 +60,10 @@ router.get('/earnings', async (req, res, next) => {
     const totalEarnings = payrolls.reduce((sum, p) => sum + (p.netPay || 0), 0);
     
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const thisMonthPayrolls = payrolls.filter(p => p.period && p.period.startsWith(currentMonth));
+    const thisMonthPayrolls = payrolls.filter((p) => {
+      const periodMonth = p.period ? String(p.period).slice(0, 7) : (p.periodStartDate ? new Date(p.periodStartDate).toISOString().slice(0, 7) : null);
+      return periodMonth && periodMonth.startsWith(currentMonth);
+    });
     const thisMonth = thisMonthPayrolls.reduce((sum, p) => sum + (p.netPay || 0), 0);
 
     res.json({ success: true, data: { totalEarnings, trips: payrolls.length, thisMonth } });

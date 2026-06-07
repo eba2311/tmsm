@@ -17,10 +17,12 @@ function initNotificationNamespace(io) {
   });
 
   ns.on('connection', (socket) => {
-    const userId = socket.handshake.auth?.userId;
+    const userId = socket.user?.sub || socket.user?.id;
     if (userId) {
       socket.join(`user:${userId}`);
       console.log(`[notifications] user ${userId} connected`);
+    } else {
+      console.log('[notifications] connected socket has no authenticated user id');
     }
 
     socket.on('disconnect', () => {
@@ -30,7 +32,8 @@ function initNotificationNamespace(io) {
 
   // Helper to push notification to a specific user
   ns.sendToUser = (userId, notification) => {
-    ns.to(`user:${userId}`).emit('notification', notification);
+    const payload = notification && typeof notification.toJSON === 'function' ? notification.toJSON() : notification;
+    ns.to(`user:${userId}`).emit('notification', payload);
   };
 
   return ns;

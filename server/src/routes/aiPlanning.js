@@ -58,8 +58,8 @@ router.post('/optimize', async (req, res, next) => {
 router.get('/demand-forecast', async (req, res, next) => {
   try {
     const bookings = await Booking.findAll({
-      attributes: ['createdAt', 'scheduleId'],
-      order: [['createdAt', 'DESC']],
+      attributes: ['created_at', 'scheduleId'],
+      order: [['created_at', 'DESC']],
       limit: 100
     });
 

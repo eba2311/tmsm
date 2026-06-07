@@ -6,25 +6,21 @@ services:
     branch: main
     envVars:
       - key: PORT
-        value: 4000
+        value: 4002
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
         value: https://tmsm-app.onrender.com
       - key: CORS_ORIGIN
         value: https://tmsm-app.onrender.com
+      # Replace with your production PostgreSQL DATABASE_URL.
+      # For SSL, append ?sslmode=require to the connection string.
       - key: DATABASE_URL
-        value: postgresql://postgres.ixfjermoridarypknxpr:DTclM7d7AqXJwBTY@aws-1-eu-central-1.pooler.supabase.com:6543/postgres
-      - key: SUPABASE_URL
-        value: https://ixfjermoridarypknxpr.supabase.co
-      - key: SUPABASE_SERVICE_KEY
-        value: sb_secret_2p6mN8gI2Ov8AgALGG1hTw_FgvDMVvl
-      - key: SUPABASE_ANON_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4Zmplcm1vcmlkYXJ5cGtueHByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mzk4NjUsImV4cCI6MjA5NTMxNTg2NX0.dw_dW0oaZYhVvYma-x8tPObyjQmHmbvf0ic5SkXtQ5w
+        value: postgresql://postgres:password@your-postgres-host:5432/tmsm
       - key: JWT_SECRET
-        value: semen_connect_jwt_secret_change_in_prod
+        value: change-this-to-a-strong-random-secret
       - key: JWT_REFRESH_SECRET
-        value: semen_connect_refresh_secret_change_in_prod
+        value: change-this-to-a-different-strong-random-secret
       - key: JWT_EXPIRES_IN
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN

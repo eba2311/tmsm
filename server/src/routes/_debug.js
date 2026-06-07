@@ -22,7 +22,7 @@ router.get('/ping', async (req, res) => {
       success: false,
       database: 'FAILED',
       error: err.message,
-      hint: 'Check DATABASE_URL in server/.env — make sure it matches the new Supabase project',
+      hint: 'Check DATABASE_URL in server/.env — make sure it points to your PostgreSQL instance',
     });
   }
 });

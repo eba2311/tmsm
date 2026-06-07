@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -17,6 +17,8 @@ export default function Login() {
   const [lockoutTime, setLockoutTime] = useState(null);
   const { login } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +39,7 @@ export default function Login() {
       } else {
         login(data.data);
         toast.success(`Welcome back, ${data.data.user.name}!`);
-        navigate('/dashboard');
+        navigate(from, { replace: true });
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -62,7 +64,7 @@ export default function Login() {
       const { data } = await api.post('/auth/verify-2fa', { email, twoFactorCode });
       login(data.data);
       toast.success('Authentication successful!');
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid code');
     } finally {

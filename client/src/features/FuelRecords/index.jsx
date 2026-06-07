@@ -7,8 +7,8 @@ export default function FuelRecords() {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
-    vehicle: '',
-    driver: '',
+    vehicleId: '',
+    driverId: '',
     date: new Date().toISOString().split('T')[0],
     fuelType: 'DIESEL',
     quantity: '',
@@ -33,7 +33,7 @@ export default function FuelRecords() {
   const { data: stats } = useQuery({
     queryKey: ['fuel-stats'],
     queryFn: async () => {
-      const { data } = await api.get('/fuel-records/stats/summary');
+      const { data } = await api.get('/fuel-records/summary/overview');
       return data.data || {};
     },
   });
@@ -64,8 +64,8 @@ export default function FuelRecords() {
       queryClient.invalidateQueries(['fuel-stats']);
       setShowAddForm(false);
       setFormData({
-        vehicle: '',
-        driver: '',
+        vehicleId: '',
+        driverId: '',
         date: new Date().toISOString().split('T')[0],
         fuelType: 'DIESEL',
         quantity: '',
@@ -83,7 +83,21 @@ export default function FuelRecords() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    createMutation.mutate({
+      vehicleId: formData.vehicleId,
+      driverId: formData.driverId || null,
+      date: formData.date,
+      fuelType: formData.fuelType,
+      quantity: Number(formData.quantity),
+      unit: formData.unit,
+      costPerUnit: Number(formData.costPerUnit),
+      odometerReading: Number(formData.odometerReading),
+      previousOdometer: formData.previousOdometer ? Number(formData.previousOdometer) : null,
+      station: formData.station,
+      paymentMethod: formData.paymentMethod,
+      receiptNumber: formData.receiptNumber,
+      notes: formData.notes,
+    });
   };
 
   return (
@@ -166,8 +180,8 @@ export default function FuelRecords() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
                   <select
-                    value={formData.vehicle}
-                    onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })}
+                    value={formData.vehicleId}
+                    onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
                     className="input"
                     required
                   >
@@ -182,8 +196,8 @@ export default function FuelRecords() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Driver</label>
                   <select
-                    value={formData.driver}
-                    onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
+                    value={formData.driverId}
+                    onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
                     className="input"
                   >
                     <option value="">Select Driver</option>

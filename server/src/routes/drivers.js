@@ -2,6 +2,7 @@ const express = require('express');
 const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Vehicle = require('../models/Vehicle');
+const Route = require('../models/Route');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { Op } = require('sequelize');
 
@@ -31,11 +32,23 @@ router.get('/', async (req, res, next) => {
           as: 'assignedVehicle',
           attributes: ['id', 'plateNumber', 'type', 'make', 'model'],
           required: false,
+        },
+        {
+          model: Route,
+          as: 'assignedRoute',
+          attributes: ['id', 'name', 'code', 'origin', 'destination'],
+          required: false,
         }
+      ],
+      attributes: [
+        'id', 'licenseNumber', 'licenseClass', 'licenseExpiry', 'nationalId', 
+        'dateOfBirth', 'address', 'experience', 'status', 'emergencyContact',
+        'salary', 'rating', 'totalTrips', 'totalDistance', 'bankAccount', 
+        'bankName', 'joiningDate', 'created_at', 'updated_at'
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ 
@@ -65,7 +78,8 @@ router.get('/:id', async (req, res, next) => {
     const driver = await Driver.findByPk(req.params.id, {
       include: [
         { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone', 'avatar'] },
-        { model: Vehicle, as: 'assignedVehicle', attributes: ['id', 'plateNumber', 'type', 'make', 'model'], required: false }
+        { model: Vehicle, as: 'assignedVehicle', attributes: ['id', 'plateNumber', 'type', 'make', 'model'], required: false },
+        { model: Route, as: 'assignedRoute', attributes: ['id', 'name', 'code', 'origin', 'destination'], required: false }
       ]
     });
     if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
@@ -124,6 +138,11 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res,
     const existing = await Driver.findOne({ where: { userId: user.id } });
     if (existing) {
       return res.status(409).json({ success: false, message: 'This user already has a driver profile' });
+    }
+
+    // Ensure the user role is upgraded to DRIVER if they were previously a passenger
+    if (user.role !== 'DRIVER' && user.role !== 'SUPER_ADMIN' && user.role !== 'OPERATOR') {
+      await user.update({ role: 'DRIVER' });
     }
 
     // Resolve optional fields

@@ -1,103 +1,151 @@
+/**
+ * mock-data.js — inject quick demo data into the local PostgreSQL database.
+ *
+ * Uses Sequelize (same ORM as the server) so no Supabase client is required.
+ * Usage: node scripts/mock-data.js
+ */
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
-const { createClient } = require('@supabase/supabase-js');
+
 const bcrypt = require('bcryptjs');
+const { sequelize } = require('../src/config/database');
+const User = require('../src/models/User');
+const Route = require('../src/models/Route');
+const Driver = require('../src/models/Driver');
+const Vehicle = require('../src/models/Vehicle');
+const Notification = require('../src/models/Notification');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error("❌ ERROR: Missing Supabase URL or Service Key in server/.env");
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Load associations so FK constraints are understood by Sequelize
+require('../src/models');
 
 async function injectData() {
-  console.log("==========================================");
-  console.log("🚀 INJECTING MOCK DATA TO LIVE DATABASE...");
-  console.log("==========================================");
+  console.log('==========================================');
+  console.log('🚀 INJECTING MOCK DATA TO LOCAL DATABASE...');
+  console.log('==========================================');
 
-  console.log("⏳ Hashing passwords...");
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash('password123', salt);
+  await sequelize.authenticate();
+
+  console.log('⏳ Hashing passwords...');
+  const hashedPassword = await bcrypt.hash('password123', 10);
   const suffix = Date.now();
-  
-  // Cleanup old fixed admin to avoid unique constraint errors
-  await supabase.from('users').delete().eq('email', 'admin@tmsm.local');
-  
-  console.log("⏳ Adding System Admin...");
-  const { data: admin, error: adminErr } = await supabase.from('users').insert([{
-    name: 'System Admin', email: 'admin@tmsm.local', phone: '0900000000', password: hashedPassword, role: 'SUPER_ADMIN'
-  }]).select().single();
 
-  if (adminErr) console.error("❌ Failed to add admin:", adminErr.message);
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  console.log('⏳ Adding System Admin...');
+  let admin;
+  try {
+    [admin] = await User.findOrCreate({
+      where: { email: 'admin@tmsm.local' },
+      defaults: {
+        name: 'System Admin',
+        phone: '0900000000',
+        password: hashedPassword,
+        role: 'SUPER_ADMIN',
+      },
+    });
+  } catch (err) {
+    console.error('❌ Failed to add admin:', err.message);
+  }
 
-  console.log("⏳ Adding Passengers...");
+  // ── Passengers ────────────────────────────────────────────────────────────
+  console.log('⏳ Adding Passengers...');
   const passengersToCreate = [
     { name: 'Kalkidan Bekele', email: `kalkidan_${suffix}@tmsm.local`, phone: `094${suffix.toString().slice(-7)}` },
-    { name: 'Yohannes Alemu', email: `yohannes_${suffix}@tmsm.local`, phone: `095${suffix.toString().slice(-7)}` }
+    { name: 'Yohannes Alemu', email: `yohannes_${suffix}@tmsm.local`, phone: `095${suffix.toString().slice(-7)}` },
   ];
   for (const p of passengersToCreate) {
-    const { error: pErr } = await supabase.from('users').insert([{
-      name: p.name, email: p.email, phone: p.phone, password: hashedPassword, role: 'PASSENGER'
-    }]);
-    if (pErr) console.error("❌ Failed to add passenger:", pErr.message);
+    try {
+      await User.create({ ...p, password: hashedPassword, role: 'PASSENGER' });
+    } catch (err) {
+      console.error('❌ Failed to add passenger:', err.message);
+    }
   }
 
-  console.log("⏳ Adding Routes...");
-  const { data: route, error: routeErr } = await supabase.from('routes').insert([{
-    name: `Arba Minch - Addis Ababa (${suffix})`, start_location_name: 'Arba Minch', end_location_name: 'Addis Ababa', distance: 500, estimated_duration: 480, base_fare: 850
-  }]).select().single();
-  if (routeErr) console.error("❌ Failed to add route:", routeErr.message);
+  // ── Route ─────────────────────────────────────────────────────────────────
+  console.log('⏳ Adding Routes...');
+  let route;
+  try {
+    route = await Route.create({
+      name: `Arba Minch - Addis Ababa (${suffix})`,
+      code: `AM-AA-${suffix}`,
+      origin: { name: 'Arba Minch', coordinates: { type: 'Point', coordinates: [37.5543, 6.0333] } },
+      destination: { name: 'Addis Ababa', coordinates: { type: 'Point', coordinates: [38.7525, 9.0301] } },
+      stops: [],
+      distance: 500,
+      estimatedDuration: 480,
+      baseFare: 850,
+      status: 'ACTIVE',
+      operatorId: admin ? admin.id : null,
+    });
+  } catch (err) {
+    console.error('❌ Failed to add route:', err.message);
+  }
 
-  console.log("⏳ Adding Drivers and Vehicles...");
+  // ── Drivers & Vehicles ────────────────────────────────────────────────────
+  console.log('⏳ Adding Drivers and Vehicles...');
   const driversToCreate = [
     { name: 'Abebe Kebede', email: `abebe_${suffix}@tmsm.local`, phone: `091${suffix.toString().slice(-7)}`, lic: `LIC-1-${suffix}`, plate: `AA-1-${suffix}` },
-    { name: 'Chala Gemechu', email: `chala_${suffix}@tmsm.local`, phone: `092${suffix.toString().slice(-7)}`, lic: `LIC-2-${suffix}`, plate: `AA-2-${suffix}` }
+    { name: 'Chala Gemechu', email: `chala_${suffix}@tmsm.local`, phone: `092${suffix.toString().slice(-7)}`, lic: `LIC-2-${suffix}`, plate: `AA-2-${suffix}` },
   ];
-  
+
   for (const d of driversToCreate) {
-    const { data: dUser, error: dErr } = await supabase.from('users').insert([{
-      name: d.name, email: d.email, phone: d.phone, password: hashedPassword, role: 'DRIVER'
-    }]).select().single();
-    
-    if (dErr) {
-      console.error("❌ Failed to add driver user:", dErr.message);
-      continue;
-    }
-    
-    if (dUser) {
-      const { data: driver, error: drErr } = await supabase.from('drivers').insert([{
-        user_id: dUser.id, license_number: d.lic, license_type: '3', years_of_experience: 5, status: 'ACTIVE'
-      }]).select().single();
-      
-      if (drErr) console.error("❌ Failed to add driver profile:", drErr.message);
+    try {
+      const dUser = await User.create({
+        name: d.name,
+        email: d.email,
+        phone: d.phone,
+        password: hashedPassword,
+        role: 'DRIVER',
+      });
 
-      if (driver) {
-        const { error: vErr } = await supabase.from('vehicles').insert([{
-          plate_number: d.plate, type: 'BUS', make: 'Yutong', model: 'ZK6122H', year: 2022, capacity: 50, status: 'ACTIVE', assigned_driver_id: driver.id, assigned_route_id: route ? route.id : null
-        }]);
-        if (vErr) console.error("❌ Failed to add vehicle:", vErr.message);
-      }
+      const driver = await Driver.create({
+        userId: dUser.id,
+        licenseNumber: d.lic,
+        licenseClass: 'C',
+        status: 'ACTIVE',
+        assignedRouteId: route ? route.id : null,
+      });
+
+      await Vehicle.create({
+        plateNumber: d.plate,
+        type: 'BUS',
+        make: 'Yutong',
+        model: 'ZK6122H',
+        year: 2022,
+        capacity: 50,
+        status: 'ACTIVE',
+        assignedDriverId: driver.id,
+        assignedRouteId: route ? route.id : null,
+        operatorId: admin ? admin.id : null,
+      });
+    } catch (err) {
+      console.error('❌ Failed to add driver/vehicle:', err.message);
     }
   }
 
+  // ── Notifications ─────────────────────────────────────────────────────────
   if (admin) {
-    console.log("⏳ Adding Notifications...");
-    const { error: nErr } = await supabase.from('notifications').insert([
-      { user_id: admin.id, type: 'SYSTEM', message: 'System deployment successful! All services running.', is_read: false },
-      { user_id: admin.id, type: 'ALERT', message: 'New driver registration requires approval.', is_read: false }
-    ]);
-    if (nErr) console.error("❌ Failed to add notifications:", nErr.message);
+    console.log('⏳ Adding Notifications...');
+    try {
+      await Notification.bulkCreate([
+        { recipientId: admin.id, type: 'SYSTEM', title: 'System Ready', message: 'System deployment successful! All services running.', isRead: false, channel: ['IN_APP'] },
+        { recipientId: admin.id, type: 'ALERT', title: 'Driver Approval', message: 'New driver registration requires approval.', isRead: false, channel: ['IN_APP'] },
+      ]);
+    } catch (err) {
+      console.error('❌ Failed to add notifications:', err.message);
+    }
   }
 
-  console.log("==========================================");
-  console.log("✅ SUCCESS! ALL MOCK DATA ADDED TO LIVE DATABASE.");
-  console.log("👉 YOU CAN NOW LOG IN WITH THESE EXACT CREDENTIALS:");
-  console.log("   Email: admin@tmsm.local");
-  console.log("   Password: password123");
-  console.log("==========================================");
+  console.log('==========================================');
+  console.log('✅ SUCCESS! ALL MOCK DATA ADDED TO DATABASE.');
+  console.log('👉 YOU CAN NOW LOG IN WITH THESE EXACT CREDENTIALS:');
+  console.log('   Email: admin@tmsm.local');
+  console.log('   Password: password123');
+  console.log('==========================================');
+
+  await sequelize.close();
 }
 
-injectData().catch(console.error);
+injectData().catch((err) => {
+  console.error('❌ Mock data injection failed:', err);
+  process.exit(1);
+});

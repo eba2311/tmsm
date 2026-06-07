@@ -38,12 +38,21 @@ router.get('/', async (req, res, next) => {
 // POST /api/v1/fuel-records
 router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
   try {
-    const { vehicleId, quantity, costPerUnit, totalCost, date, odometerReading, previousOdometer, station, location, paymentMethod, receiptNumber, notes, fuelType } = req.body;
+    let { vehicleId, vehicle, driverId, driver, quantity, costPerUnit, totalCost, date, odometerReading, previousOdometer, station, location, paymentMethod, receiptNumber, notes, fuelType, unit } = req.body;
+
+    if (!vehicleId && vehicle) {
+      vehicleId = vehicle;
+    }
+    if (!driverId && driver) {
+      driverId = driver;
+    }
 
     const record = await FuelRecord.create({
       vehicleId: vehicleId,
+      driverId: driverId || null,
       fuelType: fuelType || 'DIESEL',
       quantity,
+      unit,
       costPerUnit,
       totalCost,
       date: date || new Date(),
@@ -103,11 +112,40 @@ router.delete('/:id', authorize('SUPER_ADMIN'), async (req, res, next) => {
 // GET /api/v1/fuel-records/summary/overview
 router.get('/summary/overview', async (req, res, next) => {
   try {
-    const records = await FuelRecord.findAll({ attributes: ['totalCost'] });
-    const total = records.reduce((s, r) => s + (parseFloat(r.totalCost) || 0), 0);
-    res.json({ success: true, data: { totalCost: total, totalRecords: records.length } });
+    const records = await FuelRecord.findAll({ attributes: ['totalCost', 'quantity', 'fuelEfficiency'] });
+    const summary = records.reduce(
+      (acc, record) => {
+        const totalCost = parseFloat(record.totalCost) || 0;
+        const quantity = parseFloat(record.quantity) || 0;
+        const efficiency = parseFloat(record.fuelEfficiency);
+
+        acc.totalCost += totalCost;
+        acc.totalQuantity += quantity;
+        if (!Number.isNaN(efficiency)) {
+          acc.efficiencySum += efficiency;
+          acc.efficiencyCount += 1;
+        }
+        acc.recordCount += 1;
+        return acc;
+      },
+      { totalCost: 0, totalQuantity: 0, efficiencySum: 0, efficiencyCount: 0, recordCount: 0 }
+    );
+
+    const avgEfficiency = summary.efficiencyCount > 0
+      ? summary.efficiencySum / summary.efficiencyCount
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalCost: summary.totalCost,
+        totalQuantity: summary.totalQuantity,
+        avgEfficiency: avgEfficiency,
+        recordCount: summary.recordCount,
+      },
+    });
   } catch (err) {
-    res.json({ success: true, data: { totalCost: 0, totalRecords: 0 } });
+    res.json({ success: true, data: { totalCost: 0, totalQuantity: 0, avgEfficiency: 0, recordCount: 0 } });
   }
 });
 

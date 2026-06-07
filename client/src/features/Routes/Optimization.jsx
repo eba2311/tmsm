@@ -24,9 +24,9 @@ export default function RouteOptimization() {
   });
 
   const { data: metrics = {} } = useQuery({
-    queryKey: ['route-optimization-metrics'],
+    queryKey: ['route-optimization-metrics', timeRange],
     queryFn: async () => {
-      const { data } = await api.get('/route-optimization/summary');
+      const { data } = await api.get('/route-optimization/summary', { params: { days: timeRange.replace('d', '') } });
       return data.data || {
         totalSavings: 45000,
         fuelSaved: 1800,
@@ -46,7 +46,8 @@ export default function RouteOptimization() {
   const runOptimization = useMutation({
     mutationFn: (config) => api.post('/route-optimization', config),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['route-optimizations'] });
+      qc.invalidateQueries({ queryKey: ['route-optimizations', timeRange] });
+      qc.invalidateQueries({ queryKey: ['route-optimization-metrics'] });
     },
   });
 
@@ -180,7 +181,7 @@ export default function RouteOptimization() {
                 </tr>
               )}
               {optimizations.map((opt) => (
-                <tr key={opt._id} className="border-b hover:bg-gray-50 transition-colors">
+                <tr key={opt.id} className="border-b hover:bg-gray-50 transition-colors">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-primary" />

@@ -113,7 +113,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/v1/vehicles
-router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+router.post('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, next) => {
   try {
     // If frontend sends empty strings for dates, convert them to null
     if (req.body.insuranceExpiry === '') req.body.insuranceExpiry = null;
@@ -147,7 +147,7 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
 });
 
 // PUT /api/v1/vehicles/:id
-router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, next) => {
   try {
     const vehicle = await Vehicle.findByPk(req.params.id);
     if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });

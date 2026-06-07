@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './hooks/useAuthStore';
 import api from './lib/axios';
 import Layout from './components/Layout';
@@ -38,17 +38,28 @@ import DriverCompliance from './features/Drivers/Compliance';
 import ReportSchedules from './features/ReportSchedules';
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuthStore();
-  return user ? children : <Navigate to="/login" replace />;
+  const { user, refreshToken, rehydrated, isAuthRestoring } = useAuthStore();
+  const location = useLocation();
+
+  if ((!rehydrated && refreshToken) || (rehydrated && refreshToken && isAuthRestoring)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Restoring session...
+      </div>
+    );
+  }
+
+  return user ? children : <Navigate to="/login" state={{ from: location }} replace />;
 }
 
 export default function App() {
-  const { user, refreshToken, setTokens, login } = useAuthStore();
+  const { user, refreshToken, setTokens, login, rehydrated, setAuthRestoring } = useAuthStore();
 
   // Try to restore session on app load
   React.useEffect(() => {
     const tryRestore = async () => {
-      if (!user && refreshToken) {
+      if (rehydrated && !user && refreshToken) {
+        setAuthRestoring(true);
         try {
           const { data } = await api.post('/auth/refresh', { refreshToken });
           if (data?.data?.accessToken) {
@@ -58,11 +69,13 @@ export default function App() {
           }
         } catch (e) {
           // ignore — user will see login
+        } finally {
+          setAuthRestoring(false);
         }
       }
     };
     tryRestore();
-  }, [user, refreshToken, setTokens, login]);
+  }, [user, refreshToken, setTokens, login, rehydrated, setAuthRestoring]);
 
   return (
     <Routes>

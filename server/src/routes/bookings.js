@@ -54,7 +54,7 @@ router.get('/', async (req, res, next) => {
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: bookings, pagination: { total: count, page: Number(page), limit: Number(limit), pages: Math.ceil(count / limit) } });
@@ -177,14 +177,27 @@ router.post('/', bookingLimiter, async (req, res, next) => {
 
     const farePerSeat = schedule.fare;
     
+    // Determine passengerId and agentId
+    let finalPassengerId = req.user.id;
+    let finalAgentId = null;
+
+    if (['SUPER_ADMIN', 'OPERATOR', 'AGENT'].includes(req.user.role)) {
+      finalAgentId = req.user.id;
+      if (req.body.passengerId) {
+        finalPassengerId = req.body.passengerId;
+      }
+    }
+
     // 3. Insert Booking (one booking with all passengers)
     const booking = await Booking.create({
       scheduleId: scheduleId,
-      passengerId: req.user.id,
+      passengerId: finalPassengerId,
+      agentId: finalAgentId,
       passengers: passengers,
       totalAmount: farePerSeat * passengers.length,
       status: 'PENDING',
-      paymentStatus: 'UNPAID'
+      paymentStatus: 'UNPAID',
+      paymentMethod: paymentMethod || null
     }, { transaction: t });
 
     // 4. Update available seats

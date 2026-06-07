@@ -13,7 +13,13 @@ const passengerSchema = Joi.object({
   name: Joi.string().min(2).max(255).required(),
   email: Joi.string().email().optional().allow('', null),
   phone: Joi.string().pattern(/^\+?[0-9]{9,15}$/).optional().allow('', null),
-  locale: Joi.string().valid('en', 'am').optional().default('en')
+  locale: Joi.string().valid('en', 'am').optional().default('en'),
+  address: Joi.string().optional().allow('', null),
+  dateOfBirth: Joi.date().optional().allow('', null),
+  gender: Joi.string().valid('MALE', 'FEMALE', 'OTHER').optional().allow('', null),
+  emergencyContact: Joi.string().optional().allow('', null),
+  emergencyPhone: Joi.string().optional().allow('', null),
+  status: Joi.string().valid('ACTIVE', 'INACTIVE', 'SUSPENDED', 'BLACKLISTED').optional().default('ACTIVE')
 }).unknown(true);
 
 // GET /api/v1/passengers
@@ -32,10 +38,14 @@ router.get('/', async (req, res, next) => {
 
     const { count, rows: passengers } = await User.findAndCountAll({
       where,
-      attributes: ['id', 'name', 'email', 'phone', 'locale', 'role', 'isActive', 'createdAt'],
+      attributes: [
+        'id', 'name', 'email', 'phone', 'locale', 'role', 'isActive', 
+        'address', 'dateOfBirth', 'gender', 'emergencyContact', 'emergencyPhone', 
+        'totalTrips', 'status', 'created_at'
+      ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: passengers, pagination: { total: count, page: Number(page), limit: Number(limit), pages: Math.ceil(count / limit) } });
@@ -62,7 +72,11 @@ router.get('/:id/history', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res
 router.get('/:id', async (req, res, next) => {
   try {
     const passenger = await User.findByPk(req.params.id, {
-      attributes: ['id', 'name', 'email', 'phone', 'locale', 'role', 'isActive', 'createdAt']
+      attributes: [
+        'id', 'name', 'email', 'phone', 'locale', 'role', 'isActive',
+        'address', 'dateOfBirth', 'gender', 'emergencyContact', 'emergencyPhone', 
+        'totalTrips', 'status', 'created_at'
+      ]
     });
 
     if (!passenger) return res.status(404).json({ success: false, message: 'Passenger not found' });
@@ -76,7 +90,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/v1/passengers
-router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+router.post('/', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, next) => {
   try {
     const { error, value } = passengerSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.message });
@@ -96,6 +110,12 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
       email: passengerEmail.toLowerCase(),
       phone: value.phone || null,
       locale: value.locale,
+      address: value.address || null,
+      dateOfBirth: value.dateOfBirth || null,
+      gender: value.gender || null,
+      emergencyContact: value.emergencyContact || null,
+      emergencyPhone: value.emergencyPhone || null,
+      status: value.status || 'ACTIVE',
       role: 'PASSENGER',
       password: 'DefaultPass@123',
       isActive: true
@@ -107,6 +127,13 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
       email: passenger.email,
       phone: passenger.phone,
       locale: passenger.locale,
+      address: passenger.address,
+      dateOfBirth: passenger.dateOfBirth,
+      gender: passenger.gender,
+      emergencyContact: passenger.emergencyContact,
+      emergencyPhone: passenger.emergencyPhone,
+      totalTrips: passenger.totalTrips || 0,
+      status: passenger.status,
       role: passenger.role,
       isActive: passenger.isActive,
       createdAt: passenger.createdAt
@@ -116,7 +143,7 @@ router.post('/', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) =>
 });
 
 // PUT /api/v1/passengers/:id
-router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) => {
+router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'), async (req, res, next) => {
   try {
     const { error, value } = passengerSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.message });
@@ -124,7 +151,13 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
     const updateData = {
       name: value.name,
       phone: value.phone || null,
-      locale: value.locale
+      locale: value.locale,
+      address: value.address || null,
+      dateOfBirth: value.dateOfBirth || null,
+      gender: value.gender || null,
+      emergencyContact: value.emergencyContact || null,
+      emergencyPhone: value.emergencyPhone || null,
+      status: value.status || 'ACTIVE'
     };
     if (value.email) {
       updateData.email = value.email.toLowerCase();
@@ -141,6 +174,13 @@ router.put('/:id', authorize('SUPER_ADMIN', 'OPERATOR'), async (req, res, next) 
       email: passenger.email,
       phone: passenger.phone,
       locale: passenger.locale,
+      address: passenger.address,
+      dateOfBirth: passenger.dateOfBirth,
+      gender: passenger.gender,
+      emergencyContact: passenger.emergencyContact,
+      emergencyPhone: passenger.emergencyPhone,
+      totalTrips: passenger.totalTrips || 0,
+      status: passenger.status,
       role: passenger.role,
       isActive: passenger.isActive,
       createdAt: passenger.createdAt

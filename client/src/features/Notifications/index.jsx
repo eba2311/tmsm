@@ -1,31 +1,51 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axios';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import toast from 'react-hot-toast';
 import { Bell, CheckCheck } from 'lucide-react';
 
 export default function NotificationsPage() {
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const { data: res } = await api.get('/notifications', { params: { limit: 50 } });
+      const token = useAuthStore.getState().accessToken;
+      if (!token) throw new Error('Not authenticated');
+      const { data: res } = await api.get('/notifications', {
+        params: { limit: 50 },
+        headers: { Authorization: `Bearer ${token}` },
+      });
       return res;
     },
   });
+
+  useEffect(() => {
+    const handleNotificationReceived = () => {
+      refetch();
+    };
+
+    window.addEventListener('notification:received', handleNotificationReceived);
+    return () => window.removeEventListener('notification:received', handleNotificationReceived);
+  }, [refetch]);
 
   const list = data?.data || [];
   const unread = data?.unread ?? 0;
 
   const markRead = useMutation({
     mutationFn: (id) => api.patch(`/notifications/${id}/read`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => {
+      window.dispatchEvent(new CustomEvent('notification:read'));
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
   });
 
   const markAll = useMutation({
     mutationFn: () => api.patch('/notifications/read-all'),
     onSuccess: () => {
       toast.success('All read');
+      window.dispatchEvent(new CustomEvent('notification:read-all'));
       qc.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
@@ -51,7 +71,7 @@ export default function NotificationsPage() {
       <div className="space-y-2">
         {list.map((n) => (
           <div
-            key={n._id}
+            key={n.id}
             className={`card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${n.isRead ? 'opacity-70' : 'ring-1 ring-primary/20'}`}
           >
             <div>
@@ -61,7 +81,7 @@ export default function NotificationsPage() {
               <p className="text-[11px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' })}</p>
             </div>
             {!n.isRead && (
-              <button type="button" className="btn-primary !py-2 text-xs self-start" onClick={() => markRead.mutate(n._id)}>
+              <button type="button" className="btn-primary !py-2 text-xs self-start" onClick={() => markRead.mutate(n.id)}>
                 Mark read
               </button>
             )}

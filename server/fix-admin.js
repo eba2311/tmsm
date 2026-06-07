@@ -14,12 +14,13 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-const isSupabase = dbUrl.includes('supabase.com') || dbUrl.includes('pooler.supabase');
+const requireSsl =
+  dbUrl.includes('sslmode=require') || process.env.DB_SSL === 'true';
 
 const sequelize = new Sequelize(dbUrl, {
   dialect: 'postgres',
   logging: false,
-  dialectOptions: isSupabase ? { ssl: { require: true, rejectUnauthorized: false } } : {},
+  dialectOptions: requireSsl ? { ssl: { require: true, rejectUnauthorized: false } } : {},
 });
 
 const User = sequelize.define('User', {

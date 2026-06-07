@@ -10,12 +10,12 @@ export function createTrackingSocket({ accessToken } = {}) {
   return socket;
 }
 
-export function createNotificationsSocket({ userId, accessToken } = {}) {
+export function createNotificationsSocket({ accessToken } = {}) {
   const url = '/notifications';
   const socket = io(url, {
     path: '/socket.io',
     autoConnect: false,
-    auth: { userId, token: accessToken },
+    auth: { token: accessToken },
   });
   return socket;
 }

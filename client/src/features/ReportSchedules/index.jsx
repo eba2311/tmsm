@@ -85,8 +85,14 @@ export default function ReportScheduler() {
               onSubmit={(e) => {
                 e.preventDefault();
                 createMutation.mutate({
-                  ...newSchedule,
-                  recipients: newSchedule.recipients.split(',').map(e => e.trim()).filter(Boolean),
+                  name: newSchedule.name,
+                  description: newSchedule.description,
+                  reportType: newSchedule.reportType,
+                  scheduleType: newSchedule.schedule.type,
+                  scheduleTime: newSchedule.schedule.time,
+                  format: newSchedule.format,
+                  recipients: newSchedule.recipients.split(',').map((email) => email.trim()).filter(Boolean),
+                  filters: {},
                 });
               }}
               className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"

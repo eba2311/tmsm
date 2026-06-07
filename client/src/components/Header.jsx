@@ -31,14 +31,24 @@ export default function Header({ onMenuClick }) {
       try {
         const { data } = await api.get('/notifications');
         if (!mounted) return;
-        setUnread(data.unread || 0);
+        setUnread(data.unread ?? data.unreadCount ?? 0);
       } catch (e) {}
     }
     load();
 
     const onNotif = (e) => setUnread((n) => n + 1);
+    const onRead = (e) => setUnread((n) => Math.max(0, n - 1));
+    const onReadAll = () => setUnread(0);
+
     window.addEventListener('notification:received', onNotif);
-    return () => { mounted = false; window.removeEventListener('notification:received', onNotif); };
+    window.addEventListener('notification:read', onRead);
+    window.addEventListener('notification:read-all', onReadAll);
+    return () => {
+      mounted = false;
+      window.removeEventListener('notification:received', onNotif);
+      window.removeEventListener('notification:read', onRead);
+      window.removeEventListener('notification:read-all', onReadAll);
+    };
   }, []);
 
   return (
@@ -80,9 +90,20 @@ export default function Header({ onMenuClick }) {
         {/* Notifications */}
         <div className="relative">
           <button onClick={async () => {
-            // mark all read when opening
-            try { await api.patch('/notifications/read-all'); setUnread(0); } catch (e) {}
-            setShowNotifs((s) => !s);
+            const isOpening = !showNotifs;
+            if (isOpening) {
+              try {
+                const token = useAuthStore.getState().accessToken;
+                if (token) {
+                  await api.patch('/notifications/read-all', null, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                }
+                setUnread(0);
+                window.dispatchEvent(new CustomEvent('notification:read-all'));
+              } catch (e) {}
+            }
+            setShowNotifs(isOpening);
           }} className="relative p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-xl transition" aria-label="Notifications">
             <Bell className="w-5 h-5" />
             {unread > 0 && (<span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-etred text-white text-[11px] flex items-center justify-center">{unread}</span>)}

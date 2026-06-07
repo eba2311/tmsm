@@ -1,76 +1,50 @@
-const supabase = require('./server/src/config/supabase');
+/**
+ * test-driver.js — quickly test driver creation against local PostgreSQL.
+ * Usage: node test-driver.js
+ */
+require('dotenv').config({ path: require('path').join(__dirname, 'server/.env') });
 const bcrypt = require('bcryptjs');
+const { sequelize } = require('./server/src/config/database');
+const User = require('./server/src/models/User');
+const Driver = require('./server/src/models/Driver');
+require('./server/src/models'); // load associations
 
 async function testAddDriver() {
   try {
-    console.log("Testing driver creation...");
-    const name = "Test Driver";
-    const email = "testdriver123@example.com";
-    const phone = "0911223344";
-    const password = "password123";
-    const licenseNumber = "TEST-LIC-" + Date.now();
-    const licenseClass = "3";
-    
-    // 1. Check user
-    let { data: user, error: findError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .maybeSingle();
+    await sequelize.authenticate();
+    console.log('Testing driver creation...');
 
-    console.log("User lookup:", { user, findError });
+    const email = 'testdriver123@example.com';
+    const licenseNumber = 'TEST-LIC-' + Date.now();
 
-    let user_id;
+    // 1. Find or create user
+    let user = await User.findOne({ where: { email } });
     if (!user) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert([{
-          name,
-          email: email.toLowerCase(),
-          phone,
-          password: hashedPassword,
-          role: 'DRIVER'
-        }])
-        .select()
-        .single();
-        
-      if (createError) {
-        console.error("Failed to create user:", createError);
-        return;
-      }
-      user_id = newUser.id;
-      console.log("Created user:", newUser.id);
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      user = await User.create({ name: 'Test Driver', email, phone: '0911223344', password: hashedPassword, role: 'DRIVER' });
+      console.log('Created user:', user.id);
     } else {
-      user_id = user.id;
-      console.log("Existing user:", user.id);
+      console.log('Existing user:', user.id);
     }
 
-    // 2. Create driver
-    const { data: driver, error: insertError } = await supabase
-      .from('drivers')
-      .insert([{
-        user_id: user_id,
-        license_number: licenseNumber,
-        license_type: licenseClass,
-        license_expiry: null,
-        years_of_experience: 0,
-        status: 'ACTIVE'
-      }])
-      .select()
-      .single();
-      
-    if (insertError) {
-      console.error("Failed to create driver:", insertError);
-      return;
-    }
-    
-    console.log("Successfully created driver:", driver);
+    // 2. Create driver profile
+    const driver = await Driver.create({
+      userId: user.id,
+      licenseNumber,
+      licenseClass: 'C',
+      status: 'ACTIVE',
+    });
 
+    console.log('✅ Successfully created driver:', driver.id);
+
+    // 3. Cleanup
+    await driver.destroy();
+    await user.destroy();
+    console.log('✅ Cleanup done.');
   } catch (err) {
-    console.error("Exception:", err);
+    console.error('❌ Exception:', err.message);
+  } finally {
+    await sequelize.close();
   }
 }
 

@@ -19,7 +19,7 @@ export default function DriverPayroll() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPayroll, setNewPayroll] = useState({
-    driver: '',
+    driverId: '',
     periodStart: '',
     periodEnd: '',
     baseSalary: 3000,
@@ -29,17 +29,18 @@ export default function DriverPayroll() {
   });
   const qc = useQueryClient();
 
-  const { data: payrollRecords = [], isLoading } = useQuery({
+  const { data: payrollRecords = [], isLoading, isError, error } = useQuery({
     queryKey: ['driver-payroll', filterStatus],
     queryFn: async () => {
       const { data } = await api.get('/driver-payroll', { params: { status: filterStatus === 'all' ? undefined : filterStatus } });
       return data.data || [];
     },
+    keepPreviousData: true,
   });
 
   const { data: summary = {} } = useQuery({
     queryKey: ['payroll-summary'],
-    queryFn: async () => (await api.get('/driver-payroll/summary/overview')).data.data || {},
+    queryFn: async () => (await api.get('/driver-payroll/summary')).data.data || {},
   });
 
   const { data: drivers = [] } = useQuery({
@@ -50,11 +51,12 @@ export default function DriverPayroll() {
   const createMut = useMutation({
     mutationFn: (payload) => api.post('/driver-payroll', payload),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['driver-payroll', filterStatus] });
       qc.invalidateQueries({ queryKey: ['driver-payroll'] });
       qc.invalidateQueries({ queryKey: ['payroll-summary'] });
       toast.success('Payroll record created');
       setIsModalOpen(false);
-      setNewPayroll({ driver: '', periodStart: '', periodEnd: '', baseSalary: 3000, tripsCompleted: 0, revenueGenerated: 0, commissionRate: 15 });
+      setNewPayroll({ driverId: '', periodStart: '', periodEnd: '', baseSalary: 3000, tripsCompleted: 0, revenueGenerated: 0, commissionRate: 15 });
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Failed to create');
@@ -122,11 +124,9 @@ export default function DriverPayroll() {
               onSubmit={(e) => {
                 e.preventDefault();
                 createMut.mutate({
-                  driver: newPayroll.driver,
-                  period: {
-                    startDate: new Date(newPayroll.periodStart),
-                    endDate: new Date(newPayroll.periodEnd),
-                  },
+                  driverId: newPayroll.driverId,
+                  periodStartDate: newPayroll.periodStart,
+                  periodEndDate: newPayroll.periodEnd,
                   baseSalary: Number(newPayroll.baseSalary),
                   tripsCompleted: Number(newPayroll.tripsCompleted),
                   revenueGenerated: Number(newPayroll.revenueGenerated),
@@ -139,8 +139,8 @@ export default function DriverPayroll() {
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Select Driver</label>
                 <select 
                   className="input"
-                  value={newPayroll.driver}
-                  onChange={(e) => setNewPayroll({ ...newPayroll, driver: e.target.value })}
+                  value={newPayroll.driverId}
+                  onChange={(e) => setNewPayroll({ ...newPayroll, driverId: e.target.value })}
                   required
                 >
                   <option value="">Select a driver...</option>
@@ -301,7 +301,12 @@ export default function DriverPayroll() {
                   <td colSpan={7} className="text-center py-12 text-gray-400">Loading payroll records...</td>
                 </tr>
               )}
-              {payrollRecords.length === 0 && !isLoading && (
+              {isError && (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-red-500">{error?.response?.data?.message || 'Failed to load payroll records'}</td>
+                </tr>
+              )}
+              {!isLoading && !isError && payrollRecords.length === 0 && (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-gray-400">No payroll records found for this period.</td>
                 </tr>
@@ -321,7 +326,7 @@ export default function DriverPayroll() {
                   </td>
                   <td className="py-4 px-6">
                     <p className="text-xs font-medium text-gray-600">
-                      {safeFormat(p.period.startDate, 'MMM dd')} - {safeFormat(p.period.endDate, 'MMM dd')}
+                      {safeFormat(p.periodStartDate, 'MMM dd')} - {safeFormat(p.periodEndDate, 'MMM dd')}
                     </p>
                   </td>
                   <td className="py-4 px-6">

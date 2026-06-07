@@ -9,26 +9,14 @@ const Route = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      trim: true,
-    },
-    nameAm: {
-      type: DataTypes.STRING,
-      trim: true,
-    },
-    code: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
+    name:   { type: DataTypes.STRING, allowNull: false },
+    nameAm: { type: DataTypes.STRING },
+    code:   { type: DataTypes.STRING, allowNull: false, unique: true },
     origin: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {
-        name: '',
-        nameAm: null,
+        name: '', nameAm: null,
         coordinates: { type: 'Point', coordinates: [37.5543, 6.0333] },
       },
     },
@@ -36,27 +24,14 @@ const Route = sequelize.define(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {
-        name: '',
-        nameAm: null,
+        name: '', nameAm: null,
         coordinates: { type: 'Point', coordinates: [0, 0] },
       },
     },
-    stops: {
-      type: DataTypes.JSONB,
-      defaultValue: [],
-    },
-    distance: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
-    estimatedDuration: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    baseFare: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
+    stops:             { type: DataTypes.JSONB, defaultValue: [] },
+    distance:          { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+    estimatedDuration: { type: DataTypes.INTEGER, allowNull: false },
+    baseFare:          { type: DataTypes.DECIMAL(10, 2), allowNull: false },
     status: {
       type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'SEASONAL'),
       defaultValue: 'ACTIVE',
@@ -64,34 +39,18 @@ const Route = sequelize.define(
     transportType: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: ['BUS'],
-      validate: {
-        isIn: [['BUS', 'MINIBUS', 'BAJAJ', 'TAXI', 'CARGO']],
-      },
     },
-    isIntercity: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    operatorId: {
-      type: DataTypes.UUID,
-      references: {
-        model: 'users',
-        key: 'id',
-      },
-    },
+    isIntercity: { type: DataTypes.BOOLEAN, defaultValue: false },
+    // FK — no inline references
+    operatorId: { type: DataTypes.UUID },
   },
   {
     tableName: 'routes',
     timestamps: true,
     underscored: true,
     indexes: [
-      {
-        unique: true,
-        fields: ['code'],
-      },
-      {
-        fields: ['status'],
-      },
+      { unique: true, fields: ['code'] },
+      { fields: ['status'] },
     ],
   }
 );
