@@ -37,6 +37,7 @@ import Passengers from './features/Passenger';
 import DriverCompliance from './features/Drivers/Compliance';
 import ReportSchedules from './features/ReportSchedules';
 import BookingReports from './features/BookingReports';
+import PassengerHistory from './features/PassengerHistory';
 
 function ProtectedRoute({ children }) {
   const { user, refreshToken, rehydrated, isAuthRestoring } = useAuthStore();
@@ -135,6 +136,7 @@ export default function App() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="booking-reports" element={<BookingReports />} />
+        <Route path="passenger-history" element={<PassengerHistory />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
