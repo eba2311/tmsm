@@ -18,6 +18,8 @@ const baseLinks = [
   { to: '/routes', label: 'Routes', labelAm: 'መስመሮች', icon: MapPin },
   { to: '/schedules', label: 'Schedules', labelAm: 'መርሐ ግብር', icon: CalendarClock },
   { to: '/booking', label: 'Booking', labelAm: 'ቦታ ማስያዣ', icon: Ticket },
+  { to: '/booking-reports', label: 'Ticket Reports', labelAm: 'ቲኬት ሪፖርት', icon: FileCheck },
+  { to: '/passenger-history', label: 'Passenger History', labelAm: 'ተሳፋሪ ታሪክ', icon: History },
   { to: '/tracking', label: 'Live map', labelAm: 'ካርታ', icon: Navigation },
   { to: '/reports', label: 'Reports', labelAm: 'ሪፖርቶች', icon: BarChart3 },
   { to: '/notifications', label: 'Alerts', labelAm: 'ማስታወቂያ', icon: Bell },

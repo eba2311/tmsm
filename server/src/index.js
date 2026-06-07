@@ -117,6 +117,7 @@ app.use(morgan('combined', { stream: logger.stream }));
 app.use('/api/v1', auditMiddleware());
 
 // ── API routes ────────────────────────────────────────────────────────────────
+console.log('📋 Registering API routes...');
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/drivers', driverRoutes);
@@ -150,8 +151,11 @@ app.use('/api/v1/capacity', capacityRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/fuel', fuelRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
+console.log('✅ Booking reports route registered at /api/v1/booking-reports');
 app.use('/api/v1/booking-reports', bookingReportRoutes);
+console.log('✅ Driver analytics route registered at /api/v1/driver-analytics');
 app.use('/api/v1/driver-analytics', driverAnalyticsRoutes);
+console.log('✅ All API routes registered successfully');
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
@@ -160,6 +164,11 @@ app.get('/api/v1/health', (req, res) => {
     service: 'Dabub Connect API',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    features: {
+      bookingReports: 'enabled',
+      driverAnalytics: 'enabled',
+      passengerHistory: 'enabled'
+    }
   });
 });
 
