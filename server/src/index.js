@@ -247,25 +247,27 @@ const bootstrap = async () => {
       console.warn('⚠️  Continuing anyway...');
     }
 
-    // 4. Admin seeding (non-blocking, dev only)
-    if (process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
+    // 4. Admin seeding (non-blocking, production & dev)
+    if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
       try {
-        console.log('👤 Seeding admin account...');
+        console.log('👤 Checking admin account...');
         const User = require('./models/User');
-        const bcrypt = require('bcryptjs');
         const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
-        const hashed = await bcrypt.hash(adminPassword, 12);
+        
         const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } }).catch(() => null);
         if (!admin) {
+          console.log('👤 Creating admin user...');
           await User.create({
             name: 'Admin User',
             email: 'admin@semenconnect.com',
-            password: hashed,
+            password: adminPassword, // Will be hashed by the model hook
             role: 'SUPER_ADMIN',
             locale: 'en',
             isActive: true,
-          }, { hooks: false }).catch(() => {});
-          console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
+          }).catch((err) => {
+            console.warn('⚠️  Admin creation failed:', err.message);
+          });
+          console.log('✅ Admin user created');
         } else {
           console.log('✅ Admin user already exists');
         }
