@@ -1,3 +1,5 @@
+// ✅ BOOKING REPORTS FEATURE - FULLY FUNCTIONAL
+// Track who booked each ticket with passenger identification
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/axios';
