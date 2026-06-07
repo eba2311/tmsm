@@ -63,6 +63,7 @@ const capacityRoutes = safeRequire('./routes/capacity');
 const analyticsRoutes = safeRequire('./routes/analytics');
 const fuelRoutes = safeRequire('./routes/fuel');
 const maintenanceRoutes = safeRequire('./routes/maintenance');
+const bookingReportRoutes = safeRequire('./routes/bookingReports');
 
 // Socket handlers
 const { initTrackingNamespace } = require('./sockets/tracking');
@@ -148,6 +149,7 @@ app.use('/api/v1/capacity', capacityRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/fuel', fuelRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
+app.use('/api/v1/booking-reports', bookingReportRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
