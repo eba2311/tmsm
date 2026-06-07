@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './hooks/useAuthStore';
 import api from './lib/axios';
 import Layout from './components/Layout';
+import Home from './features/Home';
 import Login from './features/Auth/Login';
 import Register from './features/Auth/Register';
 import ForgotPassword from './features/Auth/ForgotPassword';
@@ -31,7 +32,6 @@ import HistoricalPlayback from './features/Tracking/Playback';
 import DriverPayroll from './features/Drivers/Payroll';
 import Inventory from './features/Inventory';
 import AuditLogs from './features/System/AuditLogs';
-import PassengerPortal from './features/PassengerPortal';
 import DriverPanel from './features/DriverPanel';
 import Passengers from './features/Passenger';
 import DriverCompliance from './features/Drivers/Compliance';
@@ -79,7 +79,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<PassengerPortal />} />
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
