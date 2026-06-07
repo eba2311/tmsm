@@ -227,27 +227,28 @@ const bootstrap = async () => {
     freePort(PORT);
     await new Promise(r => setTimeout(r, 800));
 
-    // 2. Test DB connectivity (non-blocking)
+    // 2. Test DB connectivity
     console.log('📊 Attempting database connection...');
     try {
       await testConnection();
       console.log('✅ Database connected');
     } catch (err) {
-      console.warn('⚠️  Database connection failed:', err.message);
-      console.warn('⚠️  Continuing without database...');
+      console.error('❌ Database connection failed:', err.message);
+      console.error('⚠️  The app requires a working database to function.');
+      throw err;
     }
 
-    // 3. Sync models (non-blocking)
+    // 3. Sync models (creates tables if missing)
     console.log('🔄 Syncing database models...');
     try {
       await syncDatabase();
-      console.log('✅ Database synced');
+      console.log('✅ Database models synced');
     } catch (err) {
-      console.warn('⚠️  Database sync failed:', err.message);
-      console.warn('⚠️  Continuing anyway...');
+      console.error('❌ Database sync failed:', err.message);
+      throw err;
     }
 
-    // 4. Admin seeding (non-blocking, production & dev)
+    // 4. Admin seeding (production & dev)
     if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
       try {
         console.log('👤 Checking admin account...');
