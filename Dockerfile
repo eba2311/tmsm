@@ -20,6 +20,9 @@ FROM node:22-alpine AS production
 
 WORKDIR /app
 
+# Install dumb-init to handle signals properly
+RUN apk add --no-cache dumb-init
+
 # Copy backend
 COPY --from=backend-builder /app/server ./server
 COPY --from=backend-builder /app/server/node_modules ./server/node_modules
@@ -34,9 +37,10 @@ ENV PORT=4000
 # Expose port
 EXPOSE 4000
 
-# Health check
+# Health check - improved for Alpine/busybox
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:4000/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD wget --quiet --tries=1 --spider http://localhost:4000/api/v1/health || exit 1
 
-# Start server
+# Start server with dumb-init to handle signals properly
+ENTRYPOINT ["/sbin/dumb-init", "--"]
 CMD ["node", "server/src/index.js"]
