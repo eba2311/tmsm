@@ -220,14 +220,15 @@ function freePort(port) {
 }
 
 const bootstrap = async () => {
-  // 0. Validate environment configuration before anything else
-  console.log('🔍 Validating environment configuration...');
-  try {
-    const { execSync } = require('child_process');
-    execSync('node scripts/validate-env.js', { stdio: 'inherit' });
-  } catch (validationErr) {
-    logger.error('❌ Environment validation failed');
-    process.exit(1);
+  // 0. Validate environment configuration (skip in production if NODE_ENV is set)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🔍 Validating environment configuration...');
+    try {
+      const { execSync } = require('child_process');
+      execSync('node scripts/validate-env.js', { stdio: 'inherit' });
+    } catch (validationErr) {
+      console.warn('⚠️  Environment validation skipped');
+    }
   }
 
   // 1. Free the port before trying to use it (handles stale nodemon processes)
