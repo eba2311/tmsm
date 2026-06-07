@@ -220,86 +220,91 @@ function freePort(port) {
 }
 
 const bootstrap = async () => {
-  // 0. Validate environment configuration (skip in production if NODE_ENV is set)
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('🔍 Validating environment configuration...');
+  try {
+    console.log('🚀 Starting TMSM server...');
+
+    // 1. Free the port before trying to use it (handles stale nodemon processes)
+    freePort(PORT);
+    await new Promise(r => setTimeout(r, 800));
+
+    // 2. Test DB connectivity (non-blocking)
+    console.log('📊 Attempting database connection...');
     try {
-      const { execSync } = require('child_process');
-      execSync('node scripts/validate-env.js', { stdio: 'inherit' });
-    } catch (validationErr) {
-      console.warn('⚠️  Environment validation skipped');
+      await testConnection();
+      console.log('✅ Database connected');
+    } catch (err) {
+      console.warn('⚠️  Database connection failed:', err.message);
+      console.warn('⚠️  Continuing without database...');
     }
-  }
 
-  // 1. Free the port before trying to use it (handles stale nodemon processes)
-  freePort(PORT);
-  await new Promise(r => setTimeout(r, 800)); // Give OS time to release port
-
-  // 2. Test DB connectivity — hard fail if the DB is unreachable
-  await testConnection().catch(err => {
-    console.warn('⚠️  Database connection warning:', err.message);
-    console.warn('⚠️  Continuing startup without database (some features may not work)');
-  });
-
-  // 3. Sync models — CREATE TABLE IF NOT EXISTS, never alters.
-  //    Errors are caught inside syncDatabase() so server always starts.
-  await syncDatabase().catch(err => {
-    console.warn('⚠️  Database sync warning:', err.message);
-    console.warn('⚠️  Continuing startup without database sync');
-  });
-
-  // 4. Auto-seed the admin account - ONLY in development or if explicitly enabled
-  if (process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
+    // 3. Sync models (non-blocking)
+    console.log('🔄 Syncing database models...');
     try {
-      const User = require('./models/User');
-      const bcrypt = require('bcryptjs');
-      // Use ENV variable for admin password, fallback to default for dev
-      const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
-      const hashed = await bcrypt.hash(adminPassword, 12);
-      const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } }).catch(() => null);
-      if (!admin) {
-        await User.create(
-          {
+      await syncDatabase();
+      console.log('✅ Database synced');
+    } catch (err) {
+      console.warn('⚠️  Database sync failed:', err.message);
+      console.warn('⚠️  Continuing anyway...');
+    }
+
+    // 4. Admin seeding (non-blocking, dev only)
+    if (process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
+      try {
+        const User = require('./models/User');
+        const bcrypt = require('bcryptjs');
+        const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
+        const hashed = await bcrypt.hash(adminPassword, 12);
+        const admin = await User.findOne({ where: { email: 'admin@semenconnect.com' } }).catch(() => null);
+        if (!admin) {
+          await User.create({
             name: 'Admin User',
             email: 'admin@semenconnect.com',
             password: hashed,
             role: 'SUPER_ADMIN',
             locale: 'en',
             isActive: true,
-          },
-          { hooks: false }
-        ).catch(() => {});
-        console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
-      } else {
-        await admin.update({ password: hashed }, { hooks: false }).catch(() => {});
-        console.log('✅ Admin password verified / reset (Admin@1234)');
+          }, { hooks: false }).catch(() => {});
+          console.log('✅ Admin user created');
+        }
+      } catch (err) {
+        console.warn('⚠️  Admin seeding skipped:', err.message);
       }
-    } catch (seedErr) {
-      console.warn('⚠️  Admin seeding skipped:', seedErr.message);
     }
+
+    // 5. Start HTTP server
+    console.log(`⚡ Starting HTTP server on port ${PORT}...`);
+    server.listen(PORT, () => {
+      console.log(`\n✅ TMSM API running → http://localhost:${PORT}`);
+      console.log(`📡 Socket.IO ready\n`);
+      logger.info(`🚀 TMSM API running → http://localhost:${PORT}`);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+        logger.error(`Port ${PORT} is already in use`);
+      } else {
+        console.error(`❌ Server error:`, err.message);
+        logger.error(`Server error: ${err.message}`);
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Bootstrap error:', err.message);
+    console.error(err.stack);
+    logger.error('Bootstrap error: ' + err.message);
+    
+    // Try to start server anyway
+    console.log('⚠️  Attempting to start server despite errors...');
+    server.listen(PORT, () => {
+      console.log(`\n⚠️  TMSM API started with errors → http://localhost:${PORT}`);
+    }).on('error', () => {
+      console.error('❌ Could not start server on port', PORT);
+      process.exit(1);
+    });
   }
-
-  // 5. Start HTTP server
-  server.listen(PORT, () => {
-    logger.info(`🚀 TMSM API running → http://localhost:${PORT}`);
-    logger.info(`📡 Socket.IO ready`);
-  });
-
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      logger.error(`Port ${PORT} is still in use after freeing attempt. Please close any other terminal running the server and restart.`);
-    } else {
-      logger.error(`Server error: ${err.message}`);
-    }
-    console.error('Server error:', err);
-  });
 };
 
-bootstrap().catch((err) => {
-  logger.error('❌ Failed to start server: ' + err.message);
-  console.error('Bootstrap error:', err);
-  // Don't exit - try to keep the server running anyway
-  console.log('⚠️  Attempting to continue despite startup error...');
-});
+bootstrap();
 
 module.exports = { app, server, io };
