@@ -3,22 +3,25 @@ const { authenticate, authorize } = require('../middlewares/auth');
 const Booking = require('../models/Booking');
 const Schedule = require('../models/Schedule');
 const User = require('../models/User');
+const Vehicle = require('../models/Vehicle');
+const Driver = require('../models/Driver');
 const { Op } = require('sequelize');
 
 const router = express.Router();
 router.use(authenticate);
 router.use(authorize('SUPER_ADMIN', 'OPERATOR', 'AGENT'));
 
-// GET /api/v1/booking-reports/all
-// Get all bookings with passenger identification
+// GET /api/v1/booking-reports/all - Complete booking report with all details
 router.get('/all', async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, status, startDate, endDate, searchEmail, searchPhone } = req.query;
+    const { page = 1, limit = 50, status, paymentStatus, paymentMethod, startDate, endDate, searchEmail, searchPhone, routeId, vehicleId, driverId } = req.query;
     const offset = (page - 1) * limit;
 
     const where = {};
     
     if (status) where.status = status;
+    if (paymentStatus) where.paymentStatus = paymentStatus;
+    if (paymentMethod) where.paymentMethod = paymentMethod;
     
     if (startDate || endDate) {
       where.created_at = {};
@@ -44,14 +47,33 @@ router.get('/all', async (req, res, next) => {
         {
           model: Schedule,
           as: 'schedule',
-          attributes: ['id', 'departureTime', 'fare'],
+          where: routeId || driverId ? { 
+            routeId: routeId || { [Op.not]: null },
+            driverId: driverId || { [Op.not]: null }
+          } : undefined,
           include: [
             {
               model: require('../models/Route'),
               as: 'route',
               attributes: ['id', 'name', 'origin', 'destination']
+            },
+            {
+              model: Vehicle,
+              as: 'vehicle',
+              attributes: ['id', 'plateNumber', 'type', 'totalSeats'],
+              where: vehicleId ? { id: vehicleId } : undefined,
+              required: false
+            },
+            {
+              model: Driver,
+              as: 'driver',
+              include: [
+                { model: User, as: 'user', attributes: ['id', 'name', 'phone'] }
+              ],
+              required: false
             }
-          ]
+          ],
+          required: true
         },
         {
           model: User,
@@ -66,31 +88,55 @@ router.get('/all', async (req, res, next) => {
       subQuery: false
     });
 
-    // Format response with passenger details
-    const formattedBookings = bookings.map(b => ({
+    // Format complete booking details
+    const formattedBookings = bookings.map((b, idx) => ({
       id: b.id,
-      bookingRef: b.bookingRef,
-      status: b.status,
-      paymentStatus: b.paymentStatus,
-      totalAmount: b.totalAmount,
-      currency: b.currency,
-      createdAt: b.createdAt,
+      ticketNumber: b.bookingRef,
+      bookingId: b.bookingRef,
+      
+      // Passenger Details
+      passengerName: b.passenger?.name,
+      passengerEmail: b.passenger?.email,
+      passengerPhone: b.passenger?.phone,
+      passengerRegistered: b.passenger?.createdAt,
+      
+      // Route Details
+      routeName: b.schedule?.route?.name,
+      routeOrigin: b.schedule?.route?.origin,
+      routeDestination: b.schedule?.route?.destination,
+      route: `${b.schedule?.route?.origin} → ${b.schedule?.route?.destination}`,
+      
+      // Vehicle Details
+      vehicleName: b.schedule?.vehicle?.type,
+      vehiclePlateNumber: b.schedule?.vehicle?.plateNumber,
+      vehicleSeats: b.schedule?.vehicle?.totalSeats,
+      
+      // Driver Details
+      driverName: b.schedule?.driver?.user?.name,
+      driverPhone: b.schedule?.driver?.user?.phone,
+      
+      // Seat & Passenger Details
       passengers: b.passengers,
+      seatNumbers: b.passengers?.map(p => p.seatNumber).join(', ') || 'N/A',
       passengerCount: b.passengers?.length || 0,
-      passengerInfo: {
-        id: b.passenger?.id,
-        name: b.passenger?.name,
-        email: b.passenger?.email,
-        phone: b.passenger?.phone,
-        registeredAt: b.passenger?.createdAt
-      },
-      agentInfo: b.agent ? {
-        id: b.agent.id,
-        name: b.agent.name,
-        email: b.agent.email
-      } : null,
-      schedule: b.schedule,
-      qrCode: b.qrCode
+      
+      // Dates
+      bookingDate: b.createdAt,
+      travelDate: b.schedule?.departureTime,
+      
+      // Payment Details
+      amountPaid: b.totalAmount,
+      currency: b.currency,
+      paymentStatus: b.paymentStatus,
+      paymentMethod: b.paymentMethod || 'N/A',
+      transactionId: b.id,
+      
+      // Booking Status
+      bookingStatus: b.status,
+      createdBy: b.agent?.name || 'Direct Booking',
+      
+      // Summary
+      fare: b.schedule?.fare
     }));
 
     res.json({
@@ -108,8 +154,78 @@ router.get('/all', async (req, res, next) => {
   }
 });
 
+// GET /api/v1/booking-reports/summary - Complete summary statistics
+router.get('/summary', async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const where = {};
+
+    if (startDate || endDate) {
+      where.created_at = {};
+      if (startDate) where.created_at[Op.gte] = new Date(startDate);
+      if (endDate) where.created_at[Op.lte] = new Date(endDate);
+    }
+
+    const totalBookings = await Booking.count({ where });
+    const paidBookings = await Booking.count({ where: { ...where, paymentStatus: 'PAID' } });
+    const pendingBookings = await Booking.count({ where: { ...where, paymentStatus: 'UNPAID' } });
+    const cancelledBookings = await Booking.count({ where: { ...where, status: 'CANCELLED' } });
+    const completedBookings = await Booking.count({ where: { ...where, status: 'USED' } });
+
+    // Revenue calculations
+    const totalRevenue = await Booking.findOne({
+      where: { ...where, paymentStatus: 'PAID' },
+      attributes: [
+        [require('sequelize').fn('SUM', require('sequelize').col('total_amount')), 'total']
+      ],
+      raw: true
+    });
+
+    // Revenue by payment method
+    const revenueByPaymentMethod = await Booking.findAll({
+      where: { ...where, paymentStatus: 'PAID' },
+      attributes: [
+        'paymentMethod',
+        [require('sequelize').fn('SUM', require('sequelize').col('total_amount')), 'total'],
+        [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
+      ],
+      group: ['paymentMethod'],
+      raw: true
+    });
+
+    // Total passengers
+    const bookingsWithPassengers = await Booking.findAll({
+      where,
+      attributes: ['passengers']
+    });
+    const totalPassengers = bookingsWithPassengers.reduce((sum, b) => {
+      return sum + (b.passengers?.length || 0);
+    }, 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalBookings,
+        paidBookings,
+        pendingBookings,
+        cancelledBookings,
+        completedBookings,
+        totalRevenue: parseFloat(totalRevenue?.total || 0),
+        totalPassengers,
+        averageBookingValue: totalBookings > 0 ? (parseFloat(totalRevenue?.total || 0) / totalBookings).toFixed(2) : 0,
+        revenueByPaymentMethod: revenueByPaymentMethod.map(r => ({
+          method: r.paymentMethod || 'Unknown',
+          total: parseFloat(r.total),
+          count: parseInt(r.count)
+        }))
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/booking-reports/passenger/:passengerId
-// Get all bookings by a specific passenger
 router.get('/passenger/:passengerId', async (req, res, next) => {
   try {
     const { passengerId } = req.params;
@@ -129,6 +245,16 @@ router.get('/passenger/:passengerId', async (req, res, next) => {
               model: require('../models/Route'),
               as: 'route',
               attributes: ['origin', 'destination']
+            },
+            {
+              model: Vehicle,
+              as: 'vehicle',
+              attributes: ['plateNumber', 'type']
+            },
+            {
+              model: Driver,
+              as: 'driver',
+              include: [{ model: User, as: 'user', attributes: ['name'] }]
             }
           ]
         }
@@ -150,166 +276,8 @@ router.get('/passenger/:passengerId', async (req, res, next) => {
         passengerInfo,
         totalBookings,
         totalSpent,
-        bookings: bookings.map(b => ({
-          id: b.id,
-          bookingRef: b.bookingRef,
-          status: b.status,
-          paymentStatus: b.paymentStatus,
-          totalAmount: b.totalAmount,
-          passengerCount: b.passengers?.length || 0,
-          route: b.schedule?.route,
-          departureTime: b.schedule?.departureTime,
-          createdAt: b.createdAt
-        }))
+        bookings
       }
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /api/v1/booking-reports/route/:routeId
-// Get all bookings for a specific route
-router.get('/route/:routeId', async (req, res, next) => {
-  try {
-    const { routeId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
-
-    const { count, rows: bookings } = await Booking.findAndCountAll({
-      include: [
-        {
-          model: Schedule,
-          as: 'schedule',
-          where: {
-            routeId: routeId
-          },
-          required: true,
-          include: [
-            {
-              model: require('../models/Route'),
-              as: 'route',
-              attributes: ['id', 'name', 'origin', 'destination']
-            }
-          ]
-        },
-        {
-          model: User,
-          as: 'passenger',
-          attributes: ['id', 'name', 'email', 'phone']
-        }
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['created_at', 'DESC']],
-      subQuery: false
-    });
-
-    res.json({
-      success: true,
-      data: bookings,
-      pagination: {
-        total: count,
-        page: Number(page),
-        limit: Number(limit),
-        pages: Math.ceil(count / limit)
-      }
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /api/v1/booking-reports/statistics
-// Get booking statistics
-router.get('/statistics', async (req, res, next) => {
-  try {
-    const totalBookings = await Booking.count();
-    const paidBookings = await Booking.count({ where: { paymentStatus: 'PAID' } });
-    const cancelledBookings = await Booking.count({ where: { status: 'CANCELLED' } });
-    const usedBookings = await Booking.count({ where: { status: 'USED' } });
-    
-    const totalRevenue = await Booking.findAll({
-      where: { paymentStatus: 'PAID' },
-      attributes: [
-        [require('sequelize').fn('SUM', require('sequelize').col('total_amount')), 'total']
-      ],
-      raw: true
-    });
-
-    const topPassengers = await Booking.findAll({
-      attributes: ['passengerId', [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'bookingCount']],
-      include: [
-        {
-          model: User,
-          as: 'passenger',
-          attributes: ['id', 'name', 'email']
-        }
-      ],
-      group: ['passengerId'],
-      order: [[require('sequelize').fn('COUNT', require('sequelize').col('id')), 'DESC']],
-      limit: 10,
-      subQuery: false,
-      raw: false
-    });
-
-    res.json({
-      success: true,
-      data: {
-        totalBookings,
-        paidBookings,
-        cancelledBookings,
-        usedBookings,
-        totalRevenue: parseFloat(totalRevenue[0]?.total || 0),
-        topPassengers
-      }
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /api/v1/booking-reports/export
-// Export bookings as JSON
-router.get('/export', async (req, res, next) => {
-  try {
-    const { startDate, endDate, status } = req.query;
-    const where = {};
-
-    if (status) where.status = status;
-    if (startDate || endDate) {
-      where.created_at = {};
-      if (startDate) where.created_at[Op.gte] = new Date(startDate);
-      if (endDate) where.created_at[Op.lte] = new Date(endDate);
-    }
-
-    const bookings = await Booking.findAll({
-      where,
-      include: [
-        {
-          model: User,
-          as: 'passenger',
-          attributes: ['id', 'name', 'email', 'phone']
-        },
-        {
-          model: Schedule,
-          as: 'schedule',
-          include: [
-            {
-              model: require('../models/Route'),
-              as: 'route',
-              attributes: ['origin', 'destination']
-            }
-          ]
-        }
-      ],
-      order: [['created_at', 'DESC']]
-    });
-
-    res.json({
-      success: true,
-      data: bookings,
-      exportedAt: new Date().toISOString()
     });
   } catch (err) {
     next(err);
