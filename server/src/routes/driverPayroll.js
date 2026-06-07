@@ -7,6 +7,31 @@ const { authenticate, authorize } = require('../middlewares/auth');
 const router = express.Router();
 router.use(authenticate, authorize('SUPER_ADMIN', 'OPERATOR'));
 
+// GET /api/v1/driver-payroll/summary - MUST BE BEFORE /:id
+router.get('/summary/overview', async (req, res, next) => {
+  try {
+    const totalDrivers = await Driver.count();
+    const totalPayroll = await DriverPayroll.sum('netPay');
+    const pendingCount = await DriverPayroll.count({ where: { status: 'PENDING' } });
+    const processedCount = await DriverPayroll.count({ where: { status: 'PROCESSED' } });
+    const paidCount = await DriverPayroll.count({ where: { status: 'PAID' } });
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        totalDrivers, 
+        totalPayroll: totalPayroll || 0, 
+        pendingCount, 
+        processedCount, 
+        paidCount 
+      } 
+    });
+  } catch (err) {
+    console.error('Summary error:', err);
+    res.json({ success: true, data: { totalDrivers: 0, totalPayroll: 0, pendingCount: 0, processedCount: 0, paidCount: 0 } });
+  }
+});
+
 // GET /api/v1/driver-payroll
 router.get('/', async (req, res, next) => {
   try {
@@ -35,7 +60,10 @@ router.get('/', async (req, res, next) => {
     });
 
     res.json({ success: true, data: payroll, pagination: { total: count, page: Number(page), limit: Number(limit) } });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    console.error('List payroll error:', err);
+    next(err); 
+  }
 });
 
 // POST /api/v1/driver-payroll
@@ -96,21 +124,9 @@ router.post('/', async (req, res, next) => {
     });
 
     res.status(201).json({ success: true, data: payrollWithDriver });
-  } catch (err) { next(err); }
-});
-
-// GET /api/v1/driver-payroll/summary
-router.get(['/summary', '/summary/overview'], async (req, res, next) => {
-  try {
-    const totalDrivers = await Driver.count();
-    const totalPayroll = await DriverPayroll.sum('netPay');
-    const pendingCount = await DriverPayroll.count({ where: { status: 'PENDING' } });
-    const processedCount = await DriverPayroll.count({ where: { status: 'PROCESSED' } });
-    const paidCount = await DriverPayroll.count({ where: { status: 'PAID' } });
-    
-    res.json({ success: true, data: { totalDrivers, totalPayroll: totalPayroll || 0, pendingCount, processedCount, paidCount } });
-  } catch (err) {
-    res.json({ success: true, data: { totalDrivers: 0, totalPayroll: 0, pendingCount: 0, processedCount: 0, paidCount: 0 } });
+  } catch (err) { 
+    console.error('Create payroll error:', err);
+    next(err); 
   }
 });
 
@@ -122,7 +138,10 @@ router.patch('/:id/approve', async (req, res, next) => {
 
     await payroll.update({ status: 'PROCESSED', approvedAt: new Date() });
     res.json({ success: true, data: payroll });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    console.error('Approve payroll error:', err);
+    next(err); 
+  }
 });
 
 // PATCH /api/v1/driver-payroll/:id/pay
@@ -138,7 +157,10 @@ router.patch('/:id/pay', async (req, res, next) => {
       processedAt: new Date()
     });
     res.json({ success: true, data: payroll });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    console.error('Pay payroll error:', err);
+    next(err); 
+  }
 });
 
 // GET /api/v1/driver-payroll/:id
@@ -157,7 +179,10 @@ router.get('/:id', async (req, res, next) => {
     });
     if (!payroll) return res.status(404).json({ success: false, message: 'Payroll record not found' });
     res.json({ success: true, data: payroll });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    console.error('Get payroll error:', err);
+    next(err); 
+  }
 });
 
 // PUT /api/v1/driver-payroll/:id
@@ -168,7 +193,10 @@ router.put('/:id', async (req, res, next) => {
 
     await payroll.update(req.body);
     res.json({ success: true, data: payroll });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    console.error('Update payroll error:', err);
+    next(err); 
+  }
 });
 
 // DELETE /api/v1/driver-payroll/:id
@@ -179,7 +207,10 @@ router.delete('/:id', async (req, res, next) => {
 
     await payroll.destroy();
     res.json({ success: true, message: 'Payroll record deleted' });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    console.error('Delete payroll error:', err);
+    next(err); 
+  }
 });
 
 module.exports = router;
