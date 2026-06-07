@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { Search, User, Mail, Phone, Calendar, MapPin, DollarSign, MapPinCheck, Clock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Search, User, Mail, Phone, Calendar, MapPin, DollarSign, CheckCircle, Clock, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function PassengerHistory() {
   const [searchPassengerId, setSearchPassengerId] = useState('');
@@ -137,7 +137,7 @@ export default function PassengerHistory() {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <MapPinCheck className="w-6 h-6 text-blue-600" />
+                    <CheckCircle className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-gray-400 uppercase">Avg Spend</p>
