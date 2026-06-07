@@ -27,6 +27,9 @@ COPY --from=backend-builder /app/server/node_modules ./server/node_modules
 # Copy client build
 COPY --from=client-builder /app/client/dist ./client/dist
 
+# Copy environment file
+COPY server/.env.production ./.env
+
 # Copy startup script
 COPY server/start.sh ./start.sh
 RUN chmod +x ./start.sh
