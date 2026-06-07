@@ -1,4 +1,5 @@
 # Multi-stage build for production
+# Build timestamp: $(date)
 FROM node:22-alpine AS client-builder
 
 WORKDIR /app/client
