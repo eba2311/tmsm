@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { Search, Download, Filter, User, Mail, Phone, Calendar, DollarSign, Users, TrendingUp, FileText, BarChart3, Eye, Printer } from 'lucide-react';
+import { Download, Filter, Eye, Printer, RefreshCw } from 'lucide-react';
 
 export default function BookingReports() {
   const [page, setPage] = useState(1);
@@ -14,18 +14,15 @@ export default function BookingReports() {
     paymentStatus: '',
     startDate: '',
     endDate: '',
-    routeId: '',
-    vehicleId: '',
-    driverId: ''
   });
   const [expandedBooking, setExpandedBooking] = useState(null);
 
   // Fetch bookings
-  const { data: bookingsData = { data: [], pagination: {} }, isLoading: bookingsLoading } = useQuery({
+  const { data: bookingsData = { data: [], pagination: {} }, isLoading: bookingsLoading, refetch } = useQuery({
     queryKey: ['bookings', page, filters],
     queryFn: async () => {
       const { data } = await api.get('/booking-reports/all', {
-        params: { page, limit: 50, ...filters }
+        params: { page, limit: 100, ...filters }
       });
       return data;
     }
@@ -66,23 +63,26 @@ export default function BookingReports() {
   const handleReset = () => {
     setFilters({
       searchEmail: '', searchPhone: '', status: '', paymentMethod: '',
-      paymentStatus: '', startDate: '', endDate: '', routeId: '', vehicleId: '', driverId: ''
+      paymentStatus: '', startDate: '', endDate: ''
     });
     setPage(1);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-black text-sidebar">Ticket Reports</h1>
-            <p className="text-gray-500 mt-1">Complete booking information with all passenger and payment details</p>
+            <h1 className="text-3xl font-black text-sidebar">All Bookings</h1>
+            <p className="text-gray-500 mt-1">View all passengers and their booking information</p>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Refresh
+            </button>
             <button onClick={() => handleExport('json')} className="btn-primary flex items-center gap-2">
-              <Download className="w-4 h-4" /> Export JSON
+              <Download className="w-4 h-4" /> Export
             </button>
             <button onClick={() => window.print()} className="btn-secondary flex items-center gap-2">
               <Printer className="w-4 h-4" /> Print
@@ -92,61 +92,39 @@ export default function BookingReports() {
 
         {/* Summary Cards */}
         {!summaryLoading && summaryData && (
-          <div className="space-y-4 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="bg-white rounded-lg p-6 border border-gray-100">
-                <p className="text-xs font-bold text-gray-400 uppercase">Total Bookings</p>
-                <p className="text-2xl font-black text-sidebar mt-2">{summaryData.totalBookings}</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 border border-gray-100">
-                <p className="text-xs font-bold text-gray-400 uppercase">Total Revenue</p>
-                <p className="text-2xl font-black text-green-600 mt-2">{summaryData.totalRevenue.toLocaleString()} ETB</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 border border-gray-100">
-                <p className="text-xs font-bold text-gray-400 uppercase">Paid Bookings</p>
-                <p className="text-2xl font-black text-primary mt-2">{summaryData.paidBookings}</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 border border-gray-100">
-                <p className="text-xs font-bold text-gray-400 uppercase">Total Passengers</p>
-                <p className="text-2xl font-black text-blue-600 mt-2">{summaryData.totalPassengers}</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 border border-gray-100">
-                <p className="text-xs font-bold text-gray-400 uppercase">Pending</p>
-                <p className="text-2xl font-black text-yellow-600 mt-2">{summaryData.pendingBookings}</p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white rounded-lg p-4 border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase">Total Bookings</p>
+              <p className="text-2xl font-black text-sidebar mt-2">{summaryData.totalBookings}</p>
             </div>
-
-            {/* Revenue by Payment Method */}
-            <div className="bg-white rounded-lg p-6 border border-gray-100">
-              <h3 className="font-bold text-sidebar mb-4">Revenue by Payment Method</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(summaryData.revenueByPaymentMethod || {}).map(([method, amount]) => (
-                  <div key={method} className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs font-bold text-gray-600">{method}</p>
-                    <p className="text-lg font-black text-primary mt-1">{amount.toLocaleString()} ETB</p>
-                  </div>
-                ))}
-              </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase">Paid</p>
+              <p className="text-2xl font-black text-green-600 mt-2">{summaryData.paidBookings}</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase">Total Revenue</p>
+              <p className="text-2xl font-black text-primary mt-2">{summaryData.totalRevenue?.toLocaleString() || '0'}</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase">Total Passengers</p>
+              <p className="text-2xl font-black text-blue-600 mt-2">{summaryData.totalPassengers}</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase">Cancelled</p>
+              <p className="text-2xl font-black text-red-600 mt-2">{summaryData.cancelledBookings}</p>
             </div>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg p-6 border border-gray-100 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-primary" />
-            <h3 className="font-bold text-sidebar">Filters</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <input type="email" placeholder="Search email..." value={filters.searchEmail}
-              onChange={(e) => setFilters({...filters, searchEmail: e.target.value})}
-              className="input text-sm" />
-            <input type="text" placeholder="Search phone..." value={filters.searchPhone}
-              onChange={(e) => setFilters({...filters, searchPhone: e.target.value})}
-              className="input text-sm" />
+        <div className="bg-white rounded-lg border border-gray-100 p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <input type="email" value={filters.searchEmail} onChange={(e) => setFilters({...filters, searchEmail: e.target.value})}
+              className="input text-sm" placeholder="Search by email" />
+            <input type="tel" value={filters.searchPhone} onChange={(e) => setFilters({...filters, searchPhone: e.target.value})}
+              className="input text-sm" placeholder="Search by phone" />
             <select value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})} className="input text-sm">
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
+              <option value="">All Booking Status</option>
               <option value="CONFIRMED">Confirmed</option>
               <option value="USED">Used</option>
               <option value="CANCELLED">Cancelled</option>
@@ -155,26 +133,12 @@ export default function BookingReports() {
               <option value="">All Payment Status</option>
               <option value="PAID">Paid</option>
               <option value="UNPAID">Unpaid</option>
-              <option value="PARTIALLY_PAID">Partially Paid</option>
             </select>
-            <select value={filters.paymentMethod} onChange={(e) => setFilters({...filters, paymentMethod: e.target.value})} className="input text-sm">
-              <option value="">All Methods</option>
-              <option value="CASH">Cash</option>
-              <option value="TELEBIRR">Telebirr</option>
-              <option value="CBE_BIRR">CBE Birr</option>
-              <option value="CARD">Card</option>
-            </select>
-            <input type="date" value={filters.startDate}
-              onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-              className="input text-sm" placeholder="Start date" />
-            <input type="date" value={filters.endDate}
-              onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-              className="input text-sm" placeholder="End date" />
-            <button onClick={handleReset} className="btn-secondary text-sm">Reset Filters</button>
+            <button onClick={handleReset} className="btn-secondary text-sm">Reset</button>
           </div>
         </div>
 
-        {/* Bookings Table */}
+        {/* Bookings List */}
         <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
           {bookingsLoading ? (
             <div className="p-8 text-center text-gray-500">Loading bookings...</div>
@@ -183,41 +147,33 @@ export default function BookingReports() {
               <table className="w-full text-xs md:text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b">
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Ticket No</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Passenger</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Route</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Vehicle</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Seats</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Amount</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Payment</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Status</th>
-                    <th className="px-4 py-3 text-center font-bold text-gray-600">Details</th>
+                    <th className="px-4 py-3 text-left font-bold">Ticket #</th>
+                    <th className="px-4 py-3 text-left font-bold">Passenger Name</th>
+                    <th className="px-4 py-3 text-left font-bold">Phone</th>
+                    <th className="px-4 py-3 text-left font-bold">Vehicle</th>
+                    <th className="px-4 py-3 text-left font-bold">Seats</th>
+                    <th className="px-4 py-3 text-left font-bold">Route</th>
+                    <th className="px-4 py-3 text-left font-bold">Amount</th>
+                    <th className="px-4 py-3 text-left font-bold">Status</th>
+                    <th className="px-4 py-3 text-center font-bold">Details</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bookingsData.data.map(booking => (
                     <tr key={booking.bookingId} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 font-bold text-primary">{booking.ticketNumber}</td>
+                      <td className="px-4 py-3 font-semibold">{booking.passengerName}</td>
+                      <td className="px-4 py-3 text-gray-600">{booking.passengerPhone}</td>
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-sidebar">{booking.passengerName}</div>
-                        <div className="text-xs text-gray-500">{booking.passengerPhone}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-semibold">{booking.route}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{booking.vehicleName}</div>
+                        <div className="font-semibold">{booking.vehicleName}</div>
                         <div className="text-xs text-gray-500">{booking.vehiclePlateNumber}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold">{booking.seatsBooked}</td>
-                      <td className="px-4 py-3 font-black text-sidebar">{booking.amountPaid} {booking.currency}</td>
-                      <td className="px-4 py-3 text-xs">
-                        <div className="font-semibold">{booking.paymentMethod}</div>
-                        <div className={`${booking.paymentStatus === 'PAID' ? 'text-green-600' : 'text-yellow-600'}`}>
-                          {booking.paymentStatus}
-                        </div>
-                      </td>
+                      <td className="px-4 py-3 font-semibold">{booking.seatsBooked}</td>
+                      <td className="px-4 py-3 text-sm">{booking.route}</td>
+                      <td className="px-4 py-3 font-bold">{booking.amountPaid} {booking.currency}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                          booking.bookingStatus === 'USED' ? 'bg-primary/10 text-primary' :
+                          booking.bookingStatus === 'USED' ? 'bg-blue-100 text-blue-700' :
                           booking.bookingStatus === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
                           booking.bookingStatus === 'CANCELLED' ? 'bg-red-100 text-red-700' :
                           'bg-yellow-100 text-yellow-700'
@@ -248,45 +204,59 @@ export default function BookingReports() {
                 if (!booking) return null;
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <h4 className="font-bold text-sidebar">Booking Details</h4>
-                      <div className="space-y-2 text-sm bg-white p-3 rounded-lg">
-                        <p><strong>Booking ID:</strong> {booking.bookingId}</p>
-                        <p><strong>Ticket Number:</strong> {booking.ticketNumber}</p>
-                        <p><strong>Booking Date:</strong> {booking.bookingDateFormatted}</p>
-                        <p><strong>Travel Date:</strong> {booking.travelDateFormatted}</p>
-                        <p><strong>Created By:</strong> {booking.createdBy}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <h4 className="font-bold text-sidebar">Passenger & Payment</h4>
-                      <div className="space-y-2 text-sm bg-white p-3 rounded-lg">
-                        <p><strong>Passenger:</strong> {booking.passengerName}</p>
-                        <p><strong>Phone:</strong> {booking.passengerPhone}</p>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100">
+                      <h4 className="font-bold text-sidebar mb-3">📋 Passenger Details</h4>
+                      <div className="space-y-2 text-sm">
+                        <p><strong>Name:</strong> {booking.passengerName}</p>
                         <p><strong>Email:</strong> {booking.passengerEmail}</p>
-                        <p><strong>Amount:</strong> {booking.amountPaid} {booking.currency}</p>
-                        <p><strong>Payment Method:</strong> {booking.paymentMethod}</p>
-                        <p><strong>Transaction ID:</strong> {booking.transactionId}</p>
+                        <p><strong>Phone:</strong> {booking.passengerPhone}</p>
+                        <p><strong>ID:</strong> {booking.passengerId}</p>
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <h4 className="font-bold text-sidebar">Vehicle & Route</h4>
-                      <div className="space-y-2 text-sm bg-white p-3 rounded-lg">
+                    <div className="bg-white p-4 rounded-lg border border-gray-100">
+                      <h4 className="font-bold text-sidebar mb-3">🚌 Vehicle Details</h4>
+                      <div className="space-y-2 text-sm">
                         <p><strong>Vehicle:</strong> {booking.vehicleName}</p>
                         <p><strong>Plate Number:</strong> {booking.vehiclePlateNumber}</p>
-                        <p><strong>Capacity:</strong> {booking.vehicleCapacity}</p>
-                        <p><strong>Route:</strong> {booking.route}</p>
+                        <p><strong>Capacity:</strong> {booking.vehicleCapacity} seats</p>
                         <p><strong>Seats Booked:</strong> {booking.seatsBooked}</p>
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <h4 className="font-bold text-sidebar">Driver Info</h4>
-                      <div className="space-y-2 text-sm bg-white p-3 rounded-lg">
+                    <div className="bg-white p-4 rounded-lg border border-gray-100">
+                      <h4 className="font-bold text-sidebar mb-3">🛣️ Route & Travel</h4>
+                      <div className="space-y-2 text-sm">
+                        <p><strong>Route:</strong> {booking.route}</p>
+                        <p><strong>Departure:</strong> {booking.travelDateFormatted}</p>
+                        <p><strong>Booking Date:</strong> {booking.bookingDateFormatted}</p>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100">
+                      <h4 className="font-bold text-sidebar mb-3">💰 Payment Details</h4>
+                      <div className="space-y-2 text-sm">
+                        <p><strong>Amount:</strong> {booking.amountPaid} {booking.currency}</p>
+                        <p><strong>Method:</strong> {booking.paymentMethod}</p>
+                        <p><strong>Status:</strong> <span className={booking.paymentStatus === 'PAID' ? 'text-green-600 font-bold' : 'text-yellow-600 font-bold'}>{booking.paymentStatus}</span></p>
+                        <p><strong>Transaction:</strong> {booking.transactionId}</p>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100">
+                      <h4 className="font-bold text-sidebar mb-3">👨‍✈️ Driver Information</h4>
+                      <div className="space-y-2 text-sm">
                         <p><strong>Driver:</strong> {booking.driverName}</p>
                         <p><strong>Phone:</strong> {booking.driverPhone}</p>
                         <p><strong>License:</strong> {booking.driverLicense}</p>
-                        <p><strong>Booking Status:</strong> {booking.bookingStatus}</p>
-                        <p><strong>Payment Status:</strong> {booking.paymentStatus}</p>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100">
+                      <h4 className="font-bold text-sidebar mb-3">📊 Booking Status</h4>
+                      <div className="space-y-2 text-sm">
+                        <p><strong>Status:</strong> <span className={`px-2 py-1 rounded font-bold ${
+                          booking.bookingStatus === 'USED' ? 'bg-blue-100 text-blue-700' :
+                          booking.bookingStatus === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                          booking.bookingStatus === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>{booking.bookingStatus}</span></p>
+                        <p><strong>Ticket:</strong> {booking.ticketNumber}</p>
                       </div>
                     </div>
                   </div>
@@ -298,16 +268,10 @@ export default function BookingReports() {
 
         {/* Pagination */}
         {bookingsData.pagination && bookingsData.pagination.pages > 1 && (
-          <div className="mt-8 flex justify-center gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50">
-              Previous
-            </button>
-            <span className="px-4 py-2 text-sm font-bold text-sidebar">
-              Page {page} of {bookingsData.pagination.pages}
-            </span>
-            <button onClick={() => setPage(p => p + 1)} disabled={page === bookingsData.pagination.pages} className="btn-secondary disabled:opacity-50">
-              Next
-            </button>
+          <div className="flex justify-center gap-2 mt-6">
+            <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary">Previous</button>
+            <span className="flex items-center px-4">{page} / {bookingsData.pagination.pages}</span>
+            <button onClick={() => setPage(Math.min(bookingsData.pagination.pages, page + 1))} disabled={page === bookingsData.pagination.pages} className="btn-secondary">Next</button>
           </div>
         )}
       </div>
