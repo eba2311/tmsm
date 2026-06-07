@@ -250,6 +250,7 @@ const bootstrap = async () => {
     // 4. Admin seeding (non-blocking, dev only)
     if (process.env.NODE_ENV === 'development' || process.env.SEED_ADMIN === 'true') {
       try {
+        console.log('👤 Seeding admin account...');
         const User = require('./models/User');
         const bcrypt = require('bcryptjs');
         const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
@@ -264,7 +265,9 @@ const bootstrap = async () => {
             locale: 'en',
             isActive: true,
           }, { hooks: false }).catch(() => {});
-          console.log('✅ Admin user created');
+          console.log('✅ Admin user created (admin@semenconnect.com / Admin@1234)');
+        } else {
+          console.log('✅ Admin user already exists');
         }
       } catch (err) {
         console.warn('⚠️  Admin seeding skipped:', err.message);
